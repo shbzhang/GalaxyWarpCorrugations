@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
 	theta_axis = np.linspace(-30,170,200)
 
-	fig1, ax = plt.subplots(nrows=2, ncols=5, sharex=True, sharey=True, figsize=[17,7])
+	fig, ax = plt.subplots(nrows=2, ncols=5, sharex=True, sharey=True, figsize=[17,7])
 	plt.subplots_adjust(wspace=0, hspace=0.2)
 	ax = ax.ravel()
 
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 		idx = (rr>=gr1) & (rr<gr2)
 
 		### plot scatter
-		ax[i].scatter(az[idx], zz[idx], s=scatter_size[idx], c=col_mc, alpha=0.35, edgecolors='none', zorder=0)
+		ax[i].scatter(az[idx], zz[idx], s=scatter_size[idx]*2, **ring_kws_mc)
 
 		### plot binned average
 		azcen, azrms, zcen, zrms, vcen, vrms, rcen, rrms = cal_zcen_zrms(az[idx], zz[idx], vv[idx], rr[idx], weights=mass[idx], binsize = 6, nbin=60)
@@ -63,26 +63,26 @@ if __name__ == '__main__':
 		bin_axis = np.linspace(min_azcen, max_azcen, max_azcen*25+1, endpoint=True)
 		bin_val = f(bin_axis)
 		'''
-		ax[i].plot(azcen, zcen, '-', color=darker_hex(col_mc), lw=2, alpha=0.8)
+		ax[i].plot(azcen, zcen, '-', **ring_kws_bin)
 		### fill gap
 		idx = np.isfinite(zcen)
-		ax[i].plot(azcen[idx], zcen[idx], '--', c=darker_hex(col_mc), lw=2, alpha=0.8)
+		ax[i].plot(azcen[idx], zcen[idx], '--', **ring_kws_bin)
 
 		### plot warp models
 		# HI
 		if i>0:
 			w = cal_warp(gr, theta_axis)
-			ax[i].plot(theta_axis, w, ls=sty_hi, lw=1.5, color=col_hi, label='HI')
+			ax[i].plot(theta_axis, w, **ring_kws_hi)
 		# cepheids, co
 		zw1, zw2, zw4, zw5=cal_warpc(gr, theta_axis)
-		ax[i].plot(theta_axis, zw1, ls=sty_ceph, lw=1.5, color=col_ceph, label='Cepheids')
-		ax[i].plot(theta_axis, zw4, ls=sty_co1, lw=1.5, color=col_co, label='CO 1comp')
-		ax[i].plot(theta_axis, zw5, ls=sty_co2, lw=1.5, color=col_co, label='CO 2comp')
+		ax[i].plot(theta_axis, zw1, **ring_kws_ceph)
+		ax[i].plot(theta_axis, zw4, **ring_kws_co1)
+		ax[i].plot(theta_axis, zw5, **ring_kws_co2)
 
 		### plot gr text
 		text = '%i' % gr if gr%1==0 else '%.1f' % gr
 		if i==0: text += ' kpc'
-		ax[i].text(0.02, 0.95, text, ha='left', va='top', fontsize=11, fontweight='bold', color=col_text, transform=ax[i].transAxes)
+		ax[i].text(0.02, 0.95, text, transform=ax[i].transAxes, **ring_kws_text)
 
 		### axes
 		ax[i].set_xticks(np.arange(-50, 200, 50))
@@ -91,25 +91,39 @@ if __name__ == '__main__':
 		#ax[i].tick_params(axis='both', which='major', labelsize=10.5, width=1.8)
 		ax[i].set_xlim(az_min, az_max)
 		ax[i].set_ylim([-0.8, 1.4])
-		#ax[i].set_yticklabels(fontsize=10.5, fontweight=1.8)
-		upper = ax[i].twiny()
-		upper.set_xticks(np.arange(0, 100, 20))
-		upper.set_xlim(0, radius)
+		ax[i].tick_params(right=True, direction='in')#, labelsize=1000/self.dpi)
+		ax[i].tick_params(which='minor', right=True, direction='in')#, labelsize=1000/self.dpi)
 
 		if i >= 5:
-			ax[i].set_xticklabels(['%i$^{\circ}$' % i for i in np.arange(-50, 200, 50)])
+			ax[i].set_xticklabels(['%i' % i for i in np.arange(-50, 200, 50)])
 		else:
 			ax[i].set_xticklabels([])
 		if i == 5:
-			ax[i].set_xlabel('Galactocentric Azimuth',fontsize=13,fontweight='bold')
+			ax[i].set_xlabel('Galactocentric Azimuth (deg)', fontsize=13, fontweight='bold')
 			ax[i].set_ylabel('Z (kpc)', fontsize=13, fontweight='bold')  
 
-		if i==3: upper.set_xticklabels(['0', '20', '40   ', None, None]) # avoid overlap
-		if i==4: upper.set_xticklabels(['  0', '20', '40 kpc', None, None]) # add kpc at the end
-		if i==9: upper.set_xticklabels(['0', '20', '40', '60 kpc', None]) # add kpc at the end
+		#ax[i].set_yticklabels(fontsize=10.5, fontweight=1.8)
+		upper = ax[i].twiny()
+		upper.set_xticks(np.arange(0, 100, 20))
+		upper.set_xticks(np.arange(0, 100, 5), minor=True)
+		upper.set_xlim(0, radius)
+		upper.tick_params(direction='in')
+		upper.tick_params(which='minor', direction='in')
+			
+		### slightly shift upper ticklabel position to avoid overlap
+		if i<=2: upper.set_xticklabels(['  0', '20', None, None, None]) # avoid overlap
+		elif i==3: upper.set_xticklabels(['  0', '20', '40    ', None, None]) # avoid overlap
+		elif i==4: upper.set_xticklabels(['  0', '20', '40 kpc', None, None]) # add kpc at the end
+		elif i<=8: upper.set_xticklabels(['  0', '20', '40', None, None]) # add kpc at the end
+		elif i==9: upper.set_xticklabels(['  0', '20', '40', '60 kpc', None]) # add kpc at the end
+
 		if i==9: ax[i].legend()
 
-	fig1.savefig('fig/az_z_warp.png', format='png', bbox_inches='tight', dpi=400)
+	### panel ID
+	ax[0].text(-0.24, 0.93, 'b', color='black', font=dict(size=36, family="Arial Black"), transform=ax[0].transAxes)
+
+
+	fig.savefig('fig/az_z_warp.png', format='png', bbox_inches='tight', dpi=400)
 	plt.show()
 
 '''

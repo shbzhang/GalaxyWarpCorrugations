@@ -10,7 +10,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-comp = 2
+comp = 1
 
 if __name__ == '__main__':
 	out_data = np.loadtxt('out_para.txt',comments='#')
@@ -54,19 +54,24 @@ if __name__ == '__main__':
 		idx = (az >= theta2) & (az < theta1)
 
 		### plot cloud
-		ax[i].scatter(rr[idx], zz[idx], s=scatter_size[idx]*2, c=col_mc, alpha=0.35, edgecolors='none', zorder=1)
+		ax[i].scatter(rr[idx], zz[idx], s=scatter_size[idx]*2, **rad_kws_mc)
 
 		### plot binned average and errorbar
 		rcen, rrms, zcen, zrms = cal_zcen_zrms(rr[idx], zz[idx], weights=mass[idx], binsize=-1, nbin=30, bin0=8.15 if i<5 else 8)
-		ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., fmt='.', c=darker_hex(col_mc), markersize=5., elinewidth = 1, capsize=2)
+		ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., **rad_kws_err)
 		#ax[i].plot(rcen, zcen, '-', color=darker_hex(col_mc), lw=2, alpha=0.8, zorder=10)
 
 		### plot h line
-		ax[i].plot([0, 30], [0, 0], sty_co1 if comp==1 else sty_co2, color=col_co, lw=2, zorder=0)
+		if comp==1:
+			rad_kws_co1['zorder']=0
+			ax[i].plot([0, 30], [0, 0], **rad_kws_co1)
+		else:
+			rad_kws_co2['zorder']=0
+			ax[i].plot([0, 30], [0, 0], **rad_kws_co2)
 
 		### plot text
 		text = '[%s$^{\circ}$, %s$^{\circ}$]' %(theta1, theta2)
-		ax[i].text(0.02, 0.98, text, ha='left', va='top', fontsize=11, fontweight='bold', color=col_text, transform=ax[i].transAxes)
+		ax[i].text(0.02, 0.98, text, transform=ax[i].transAxes, **rad_kws_text)
 
 		### ticks
 		ax[i].set_xticks(np.arange(0, 30, 4))
@@ -74,8 +79,8 @@ if __name__ == '__main__':
 		ax[i].minorticks_on()
 		ax[i].tick_params(axis='x', which='major', labelsize=12)#, direction='in')
 		ax[i].tick_params(axis='y', which='major', labelsize=12)#, direction='in')
-		ax[i].set_xlim(8, 21.5)
-		ax[i].set_ylim(-0.8, 0.8)
+		ax[i].tick_params(top=True, right=True, direction='in')#, labelsize=1000/self.dpi)
+		ax[i].tick_params(which='minor', top=True, right=True, direction='in')#, labelsize=1000/self.dpi)
 
 
 		if i == 10:
@@ -83,12 +88,21 @@ if __name__ == '__main__':
 			raxis = np.linspace(0,30,200)
 			phiaxis = np.repeat(34, 200)
 			zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], sin=p_sin1comp if comp==1 else p_sin2comp)
-			ax[i].plot(raxis, zaxis, color=col_co, linestyle=':', lw=2, zorder=10)
-
-			### sin
+			ax[i].plot(raxis, zaxis, **rad_kws_sin)
+		if i == 10:
+			### label
 			ax[i].set_xlabel('R (kpc)', fontsize=13, fontweight='bold')
 			ax[i].set_ylabel('Z (kpc)', fontsize=13, fontweight='bold')
+		if i>=10:
+			xtk = ax[i].get_xticks().astype(str)
+			xtk[2] = '  '+xtk[2]	#shift '8' a little right
+			ax[i].set_xticklabels(xtk) # add kpc at the end
 		#if i == 14: ax[i].legend()
+
+		ax[i].set_xlim(8, 21.5)
+		ax[i].set_ylim(-0.8, 0.8)
+
+	ax[0].text(-0.25, 0.9, 'b', color='black', font=dict(size=36, family="Arial Black"), transform=ax[0].transAxes)
 
 	plt.savefig('fig/r_z_corrugation_resi_%icomp.png' % comp,format='png',bbox_inches='tight', dpi=400)
 	plt.show()

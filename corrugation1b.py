@@ -50,25 +50,25 @@ if __name__ == '__main__':
 		idx = (az >= theta2) & (az < theta1)
 
 		### plot cloud
-		ax[i].scatter(rr[idx], zz[idx], s=scatter_size[idx]*2, c=col_mc, alpha=0.35, edgecolors='none', zorder=0)
+		ax[i].scatter(rr[idx], zz[idx], s=scatter_size[idx]*2, **rad_kws_mc)
 
 		### plot binned average and errorbar
 		rcen, rrms, zcen, zrms = cal_zcen_zrms(rr[idx], zz[idx], weights=mass[idx], binsize=-1, nbin=30, bin0=8.15 if i<5 else 8)
-		ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., fmt='.', c=darker_hex(col_mc), markersize=5., elinewidth = 1, capsize=2)
+		ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., **rad_kws_err)
 
 		### plot warp models
 		# HI
 		w = cal_warp(gr_axis, theta)
-		ax[i].plot(gr_axis, w, ls=sty_hi, lw=1.5, color=col_hi, label='HI')
+		ax[i].plot(gr_axis, w, **rad_kws_hi)
 		# cepheids, co
 		zw1, zw2, zw4, zw5=cal_warpc(gr_axis, theta)
-		ax[i].plot(gr_axis, zw1, ls=sty_ceph, lw=1.5, color=col_ceph, label='Cepheids')
-		ax[i].plot(gr_axis, zw4, ls=sty_co1, lw=1.5, color=col_co, label='CO 1comp')
-		ax[i].plot(gr_axis, zw5, ls=sty_co2, lw=1.5, color=col_co, label='CO 2comp')
+		ax[i].plot(gr_axis, zw1, **rad_kws_ceph)
+		ax[i].plot(gr_axis, zw4, **rad_kws_co1)
+		ax[i].plot(gr_axis, zw5, **rad_kws_co2)
 
 		### plot text
 		text = '[%s$^{\circ}$, %s$^{\circ}$]' %(theta1, theta2)
-		ax[i].text(0.02, 0.98, text, ha='left', va='top', fontsize=11, fontweight='bold', color=col_text, transform=ax[i].transAxes)
+		ax[i].text(0.02, 0.98, text, transform=ax[i].transAxes, **rad_kws_text)
 
 		### ticks
 		ax[i].set_xticks(np.arange(0, 30, 4))
@@ -76,13 +76,23 @@ if __name__ == '__main__':
 		ax[i].minorticks_on()
 		ax[i].tick_params(axis='x', which='major', labelsize=12)#, direction='in')
 		ax[i].tick_params(axis='y', which='major', labelsize=12)#, direction='in')
-		ax[i].set_xlim([8, 21.5])
-		ax[i].set_ylim([-0.8, 1.4])
+		ax[i].tick_params(top=True, right=True, direction='in')#, labelsize=1000/self.dpi)
+		ax[i].tick_params(which='minor', top=True, right=True, direction='in')#, labelsize=1000/self.dpi)
+
 
 		if i == 10:
 			ax[i].set_xlabel('R (kpc)', fontsize=13, fontweight='bold')
 			ax[i].set_ylabel('Z (kpc)', fontsize=13, fontweight='bold')
+		if i>=10:
+			xtk = ax[i].get_xticks().astype(str)
+			xtk[2] = '  '+xtk[2]	#shift '8' a little right
+			ax[i].set_xticklabels(xtk) # add kpc at the end
+
 		if i == 14: ax[i].legend(loc='upper right')
+		ax[i].set_xlim([8, 21.5])
+		ax[i].set_ylim([-0.8, 1.4])
+
+	ax[0].text(-0.25, 0.9, 'c', color='black', font=dict(size=24, family="Arial Black"), transform=ax[0].transAxes)
 
 	plt.savefig('fig/r_z_corrugation.png',format='png',bbox_inches='tight', dpi=400)
 	plt.show()

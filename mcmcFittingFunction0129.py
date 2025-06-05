@@ -7,9 +7,9 @@ import os
 np.random.seed(42)
 
 #comp1/comp2 * dR * sin
-component = 2
+component = 1
 excluded = True
-sin = True 	#set to True to fit sin component and plot 3D residual
+sin = False 	#set to True to fit sin component and plot 3D residual
 print('Running with %i component(s) and %s l in [195, 200] and %s SIN component' % (component, 'excluding' if excluded else 'including', 'with' if sin else 'without'))
 
 if component == 1: path = 'oneComp'
@@ -43,9 +43,9 @@ params[r'$\phi_{w2}$'] = (-20.4479290, 'free' if (component==2) & (not sin) else
 
 ###sin component
 params[r'$a_3$'] = (0.0, 'free' if sin else 'fixed', [0, 0.50]) #a_3 in kpc
-params[r'$R_{sin}$'] = (7.54, 'free' if sin else 'fixed', [6, 9])  #start of sin component in kpc
-params[r'$Period_0$'] = (1.9, 'free' if sin else 'fixed', [1.1, 3.0])  #period of sin component in kpc
-params[r'$Period_1$'] = (0.0, 'free' if sin else 'fixed', [-0.2, 0.3])  #period increasement of sin component in kpc
+params[r'$R_{c}$'] = (7.54, 'free' if sin else 'fixed', [6, 9])  #start of sin component in kpc
+params[r'$P_0$'] = (1.9, 'free' if sin else 'fixed', [1.1, 5.0])  #period of sin component in kpc
+params[r'$P_1$'] = (0.0, 'free' if sin else 'fixed', [-0.2, 0.3])  #period increasement of sin component in kpc
 params[r'$\phi_{sin}$'] = (33.5, 'fixed', [28, 50])  #phi center in deg
 params[r'$\phi_{sin,width}$'] = (4,'fixed', [1, 5]) #phi width in deg
 params[r'$a_4$'] = (0.00, 'free' if sin else 'fixed', [-0.2, 0.1])  #baseline
@@ -58,7 +58,7 @@ params[r'$a_4$'] = (0.00, 'free' if sin else 'fixed', [-0.2, 0.1])  #baseline
 ###MCMC setting  [ -0.08204349   0.10188      7.77984319 -10.99553919  -0.11923537 13.79306634 -23.78646842]
 
 nwalkers = 32 	#how many thread
-burnin = 800 	#number of iteration to reach local minimum (usually 20~30% of niter)
+burnin = 1000 	#number of iteration to reach local minimum (usually 20~30% of niter)
 niter = 3000	#number of iteration
 
 '''
@@ -168,16 +168,39 @@ def main(*data, initial=initial, nwalkers=nwalkers, burnin=burnin, niter=niter, 
 	
 	return sampler, pos, prob, state
 
-def convolveZ(x, y, z, w, kernelsize, samplex, sampley):
-	# get average z at (samplex, sampley) by convolving points (x,y,z,w) along z direction
-	distance2 = ((samplex[...,np.newaxis] - x)**2 + (sampley[...,np.newaxis] - y)**2)
+
+def _excludedXYZ(x, y, z):
+	### remove excluded surface
+	r, phi = XY2RPHI(x, y)
+	from warp_out_b import gc2g
+	l, b, d = gc2g(r, phi, z)
+	idx = (l>165) & (l<199) & (x**2+y**2>16**2)
+	x[idx] = np.nan
+	y[idx] = np.nan
+	z[idx] = np.nan
+	return x, y, z
+
+
+def convolveZ(x, y, z, w, kernelsize, sampleX, sampleY):
+	# get average z at (sampleX, sampleY) by convolving points (x,y,z,w) along z direction
+	distance2 = ((sampleX[...,np.newaxis] - x)**2 + (sampleY[...,np.newaxis] - y)**2)
 	sigma2 = kernelsize**2 / (8*np.log(2))
 	kernelweight = np.exp(- distance2 / 2 / sigma2)
 
-	kernelweight[distance2>kernelsize**2*3] = 0
+	kernelweight[distance2>kernelsize**2*4] = 0
 	#w=1
-	samplez = np.sum(z * w * kernelweight, axis=-1) / np.sum(w * kernelweight, axis=-1)
-	return samplez
+	sampleZ = np.sum(z * w * kernelweight, axis=-1) / np.sum(w * kernelweight, axis=-1)
+
+	### remove excluded l range
+	sampleR, samplePHI = XY2RPHI(sampleX, sampleY)
+	from warp_out_b import gc2g
+	l, b, d = gc2g(sampleR, samplePHI, sampleZ)
+
+	idx = ( (l>165) & (l<199) & (sampleR>16) ) | ( (l>165) & (l<195) )
+	sampleZ[idx] = np.nan
+
+	return sampleZ
+
 
 def XY2RPHI(x, y):
 	r = np.sqrt(x**2 + y**2)
@@ -206,6 +229,18 @@ if __name__ == '__main__':
 		np.hstack((np.loadtxt('osc2_para.txt').T, np.loadtxt('out_para.txt').T, np.loadtxt('per_para.txt').T))
 		#ind = ~((l >= 15) & (l < 20) | (l > 160) & (l <= 165) | (l >= 195) & (l < 200))
 		#ind = (mas > 0) & ~((l > 160) & (l <= 165) | (l >= 195) & (l < 200)) & (gal_ridus >=16) & (gal_ridus < 19)
+
+		'''
+		import pandas as pd
+		df = pd.read_csv('clumps.csv')
+		xx = df['xx'].to_numpy()
+		yy = df['yy'].to_numpy()
+		zz = df['zz'].to_numpy()
+		l = df['l'].to_numpy()
+		b = df['b'].to_numpy()
+		mas = df['mass'].to_numpy()
+		'''
+
 		if excluded:
 			#ind = (mas > 0) & ~((l > 160) & (l <= 165) | (l >= 195) & (l < 200))
 			#ind = (mas > 0) & ((l <= 160) | (l >= 200))
@@ -286,7 +321,7 @@ if __name__ == '__main__':
 	if 0:
 		###run MCMC
 		sampler, pos, prob, state = main(data)
-		samples = sampler.flatchain
+		#samples = sampler.flatchain
 		steps = sampler.flatchain
 		probs = sampler.flatlnprobability
 		np.save(os.path.join(path, 'steps%s.npy' % suffix), steps)
@@ -299,8 +334,6 @@ if __name__ == '__main__':
 	if 1:
 		med  = np.median(steps, axis=0)
 		best = steps[np.argmax(probs)]
-		print(probs.min(), probs.max())
-		print(probs > np.percentile(probs, 95))
 		bestmed = np.mean(steps[probs > np.percentile(probs, 95)], axis=0)
 		print('The best fitting result is: ', best)
 		print('The median fitting result is: ', med)
@@ -330,13 +363,17 @@ if __name__ == '__main__':
 	### corner plot
 	if 0:
 		def corners(steps, probs, bins=10, labels=[None]*ndim, point=best, top=90):
+			def lim(s):
+				ma = np.nanmax(s)
+				mi = np.nanmin(s)
+				return mi-(ma-mi)*0.1, ma+(ma-mi)*0.1
 			steps = steps[np.argsort(probs)]
 			probs = np.sort(probs)
 			def scientificNotationTitle(v, l, u):
 				e = np.floor(np.log10(np.abs(v)))
 				if e == 1: return '$%+.2f_{%+.2f}^{%+.2f}$' % (v, l, u)
 				elif e == 0: return '$%+.3f_{%+.3f}^{%+.3f}$' % (v, l, u)
-				else: return '$%+.3f_{%+.3f}^{%+.3f}$x$10^{%i}$' % (v/10**e, l/10**e, u/10**e, e)
+				else: return '$%+.3f_{%+.3f}^{%+.3f}$ x$10^{%i}$' % (v/10**e, l/10**e, u/10**e, e)
 			fig, ax = plt.subplots(nrows=ndim, ncols=ndim, figsize=(9,9))
 			plt.subplots_adjust(bottom=0.09, top=0.91, left=0.09, right=0.91, wspace=0.05, hspace=0.05)
 			### only plot the top% steps
@@ -344,35 +381,66 @@ if __name__ == '__main__':
 			for i in range(ndim):
 				### hist at [i,i]
 				h,xe,_ = ax[i,i].hist(steps[:,i][idx], color='grey', bins=bins, density=True)
-				#ax[i,i].plot([best[i],], h[np.argwhere(best[i]>xe)[-1]]*1.1, 'gv')
-				ax[i,i].plot([point[i],], h[np.argwhere(point[i]>xe)[-1]]*1.1, 'v', color='#e33a23')
+				### title
 				lower = np.quantile(steps[:,i], 0.16)-point[i]
 				upper = np.quantile(steps[:,i], 0.84)-point[i]
 				ax[i,i].text(0, 1.02, '%s=%s' % (labels[i], scientificNotationTitle(point[i], lower, upper)), \
 					ha='left', va='bottom', fontsize=10, transform=ax[i,i].transAxes)
+				### marker
+				peak = float(h[np.argwhere(point[i]>xe)[-1]])
+				ax[i,i].plot([point[i],], peak*1.1, 'v', color='#e33a23')
+				ax[i,i].plot([point[i]+lower]*2, [0, peak], '--', color='k', lw=1, alpha=0.5)
+				ax[i,i].plot([point[i]+upper]*2, [0, peak], '--', color='k', lw=1, alpha=0.5)
 
 				### hide some xticks and all yticks
 				if i<ndim-1: ax[i,i].xaxis.set_ticklabels([])
-				ax[i,i].yaxis.set_ticklabels([])
+				ax[i,i].set_yticklabels([])
+
+				### ticks
+				ax[i,i].minorticks_on()
+				ax[i,i].tick_params(top=True, left=False, direction='in', labelrotation=45, length=5)
+				ax[i,i].tick_params(which='minor', top=True, left=False, direction='in', length=2)
+				#ax[i,i].tick_params(labelrotation=45)
+				ax[i,i].set_xlim(lim(steps[:,i][idx]))
 
 				### plot hist2d
-				for i in range(ndim):
-					for j in range(i):
-						h,xe,ye,_ = ax[i,j].hist2d(steps[:,j][idx], steps[:,i][idx], bins=bins, cmap='gray_r')
-						#ax[i,j].scatter(steps[:,j][idx], steps[:,i][idx], c=probs[idx], s=0.2, cmap='RdYlBu_r')
-						#x,y = (xe[1:]+xe[:-1])/2, (ye[1:]+ye[:-1])/2
-						#ax[i,j].contour(x, y, h.T, colors='gray',levels=[h.max()*0.5, h.max()*0.75])
-						#ax[i,j].scatter(steps[:,j], steps[:,i], c=probs, s=0.2)#, vmin=np.percentile(probs,0.8))
-						#ax[i,j].plot(best[j],best[i], 'gx')
-						ax[i,j].plot(point[j],point[i], '+', color='#e33a23', ms=8, mew=2)
-						if i<ndim-1: ax[i,j].xaxis.set_ticklabels([])
-						if j>0: ax[i,j].yaxis.set_ticklabels([])
-						ax[j,i].axes.set_axis_off()
+				for j in range(i):
+					### hist
+					h,xe,ye,_ = ax[i,j].hist2d(steps[:,j][idx], steps[:,i][idx], bins=bins, cmap='gray_r')
+					#ax[i,j].scatter(steps[:,j][idx], steps[:,i][idx], c=probs[idx], s=0.2, cmap='RdYlBu_r')
+					#x,y = (xe[1:]+xe[:-1])/2, (ye[1:]+ye[:-1])/2
+					#ax[i,j].contour(x, y, h.T, colors='gray',levels=[h.max()*0.5, h.max()*0.75])
+					#ax[i,j].scatter(steps[:,j], steps[:,i], c=probs, s=0.2)#, vmin=np.percentile(probs,0.8))
+					#ax[i,j].plot(best[j],best[i], 'gx')
+					### marker
+					ax[i,j].plot(point[j],point[i], '+', color='#e33a23', ms=8, mew=2)
+					
+					### hide some
+					if i<ndim-1: ax[i,j].xaxis.set_ticklabels([])
+					if j>0: ax[i,j].yaxis.set_ticklabels([])
 
-		corners(steps, probs, bins=40, labels=free_params_name, point=bestmed, top=60)
-		plt.savefig('fig/corner_%icomp%s.png' % (component, '_sin' if sin else ''), format='png', bbox_inches='tight', dpi=400)
-		#corner.corner(parameters[good], show_titles=True, labels=labels, plot_contours=False, plot_datapoints=True, quantiles=[0.16, 0.5, 0.84], range=None)#[(v-0.5,v+0.5) for v in best])
+					### ticks
+					ax[i,j].minorticks_on()
+					ax[i,j].set_yticks(ax[i,i].get_xticks())
+					ax[i,j].tick_params(top=True, right=True, direction='in', labelrotation=45, length=5)
+					ax[i,j].tick_params(which='minor', top=True, right=True, direction='in', length=2)
+					ax[i,j].set_xlim(lim(steps[:,j][idx]))
+					ax[i,j].set_ylim(lim(steps[:,i][idx]))
+					### hide upper right
+					ax[j,i].axes.set_axis_off()
+
+			if sin:
+				if component==1:
+					ax[0,0].text(-0.25, 1, 'a', ha='left', va='top', color='black', font=dict(size=18, family="Arial Black"), transform=ax[0,0].transAxes)
+				else:
+					ax[0,0].text(-0.25, 1, 'b', ha='left', va='top', color='black', font=dict(size=18, family="Arial Black"), transform=ax[0,0].transAxes)
+
+		#plt.plot(probs, '.')
 		#plt.show()
+		corners(steps[2000:], probs[2000:], bins=31, labels=free_params_name, point=bestmed, top=40)
+		plt.savefig('fig/corner_%icomp%s.png' % (component, '_sin' if sin else ''), format='png', bbox_inches='tight', dpi=400)
+		#corner.corner(steps, show_titles=True, plot_contours=False, plot_datapoints=True, quantiles=[0.16, 0.5, 0.84], range=None)#[(v-0.5,v+0.5) for v in best])
+		plt.show()
 
 
 	### export residual
@@ -444,7 +512,7 @@ if __name__ == '__main__':
 			'''
 			if polar:
 				if step is None: step=(.25, 2)	#
-				sampleR, samplePHI = np.meshgrid(np.arange(8, 22.1, step[0]), np.arange(0, 360.1, step[1]))
+				sampleR, samplePHI = np.meshgrid(np.arange(1, 22.1, step[0]), np.arange(0, 360.1, step[1]))
 				sampleX, sampleY = RPHI2XY(sampleR, samplePHI)
 			else:
 				if step is None: step=(.25, .25)
@@ -505,20 +573,25 @@ if __name__ == '__main__':
 			### DATA regrid surface
 			### use a small step for surface to make it smooth, eg. (0.25, 2)
 			### use a larger step for wireframe to make it clear to see, eg. (0.5, 4)
-			gridX, gridY, gridZ = _dataConvolve(step=(0.5, 4), polar=True)
+			#gridX, gridY, gridZ = _convolveData2Grid(step=(0.75, 5), polar=True, warp=False, residual=False, sin=False)
+			#gridX, gridY, gridZ = _dataConvolve(step=(0.5, 4), polar=True)
 			#p.add_mesh(_surface(gridX, gridY, gridZ), style='points_gaussian', color='k', clim=[-1,1], opacity=1.0, point_size=14, render_points_as_spheres=False)
-			p.add_points(_point(gridX.ravel(), gridY.ravel(), gridZ.ravel()), style='points_gaussian', scalars=gridZ.ravel(), cmap='RdYlBu_r', clim=[-1,1], opacity=1.0, point_size=3, render_points_as_spheres=False)
+			
+			#p.add_points(_point(gridX.ravel(), gridY.ravel(), gridZ.ravel()), style='points_gaussian', scalars=gridZ.ravel(), cmap='RdYlBu_r', clim=[-1,1], opacity=1.0, point_size=3, render_points_as_spheres=False)
 			#p.add_mesh(_surface(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-1,1], opacity=0.9, point_size=5, show_scalar_bar=False)
 
 			### MODEL wireframe
-			gridX, gridY, gridZ = _modelGrid(sin=False)
-			p.add_mesh(_surface(gridX, gridY, gridZ), style='wireframe', color='k', opacity=1.0, line_width=1)
+			#gridX, gridY, gridZ = _modelGrid(sin=False)
+			grid = _surface(gridX, gridY, gridZ)
+			grid.texture_map_to_plane(inplace=True)
+
+			p.add_mesh(grid, style='surface', opacity=1.0, line_width=1, texture = pv.read_texture('ssc2008-10a_ext.jpg'))
 			#p.add_mesh(_surface(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-1,1], point_size=10)
 
 			### smoooth MODEL wireframe
 			#_smoothModelGrid(p, sin=False)
 
-			p.set_scale(xscale=1, yscale=1, zscale=7)	#scale z by 10
+			p.set_scale(xscale=1, yscale=1, zscale=3)	#scale z by 10
 			p.set_position([-120, 70, 12])	#position of eye
 			p.set_focus([0, 0, 0])	#position to look at
 			p.set_viewup([0, 0, 1])	#z is up
@@ -599,7 +672,7 @@ if __name__ == '__main__':
 
 
 	### 3D visualization with plotly
-	if 0:
+	if not sin:
 		#best = initial
 		import plotly.graph_objs as go
 		### Data
@@ -618,7 +691,7 @@ if __name__ == '__main__':
 		points = go.Scatter3d(x=gridX.ravel(), y=gridY.ravel(), z=gridZ.ravel(), mode='markers', \
 			marker=dict(size=5, color=gridZ.ravel(), colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5, opacity=1.0, \
 			colorbar=dict(thickness=20, title='Z (kpc)', x=0.24, y=0.12, len=0.3, orientation='h')))
-		
+
 
 		### wireframe
 		wires = []
@@ -648,8 +721,9 @@ if __name__ == '__main__':
 		sectorPosZ = function((sectorPosR, sectorPosPhi), bestmed)
 		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
 		sectorText = []
-		for i in [0, 6, 12, 14]:#range(len(sectorPosPhi)):
-			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$Az_{%i}$' % (i+1), showarrow=False, \
+		#for i in [0, 6, 12, 14]:
+		for i in range(len(sectorPosPhi)):
+			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$\phi_{%i}$' % (i+1), showarrow=False, \
 				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=20)))
 
 		sectorPosR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5, 20.5])])
@@ -670,6 +744,7 @@ if __name__ == '__main__':
 		gcText = dict(x=0, y=0, z=0, text='GC', showarrow=False,
 			xanchor='left', xshift=5, yanchor='bottom', font=dict(color='#666666', size=16))
 
+
 		eyeD = 1.6
 		eyeAz = -35
 		eyeEl = 25
@@ -677,26 +752,27 @@ if __name__ == '__main__':
 			y = eyeD*np.cos(eyeEl*np.pi/180)*np.cos(eyeAz*np.pi/180),
 			z = eyeD*np.sin(eyeEl*np.pi/180))
 
-		'''
+		
 		### R vs phi_w
-		_r, _phi, _z = [], [], []
-		for i in range(9,18):
-			suffix = '_%i_%i' % (i, i+1)
-			steps = np.load(os.path.join(path, 'steps%s.npy' % suffix))
-			probs = np.load(os.path.join(path, 'probs%s.npy' % suffix))
-			bestmed = np.mean(steps[probs > np.percentile(probs, 95)], axis=0)
-			_r.append(i+0.5)
-			_phi.append(bestmed[-1])
-			_z.append(0)
-		_x, _y = RPHI2XY(np.array(_r), np.array(_phi))
-		_rphiw = go.Scatter3d(x=_x, y=_y, z=_z, mode='lines',\
-			marker=dict(symbol='square', size=1, color='darkgreen', opacity=1), line=dict(color='darkgreen', width=8))
-		_r = [8.5, 20.5]
-		_phi = [bestmed[-1]]*2
-		_x, _y = RPHI2XY(np.array(_r), np.array(_phi))
-		_phiw_1comp = go.Scatter3d(x=_x, y=_y, z=[0, 0], mode='lines+markers',\
-			marker=dict(symbol='square', size=1, color='darkgreen', opacity=1), line=dict(dash='longdash', color='darkgreen', width=8))
-		'''
+		if component==1:
+			_r, _phi, _z = [], [], []
+			for i in range(9,18):
+				suffix = '_%i_%i' % (i, i+1)
+				steps = np.load(os.path.join(path, 'steps%s.npy' % suffix))
+				probs = np.load(os.path.join(path, 'probs%s.npy' % suffix))
+				bestmed = np.mean(steps[probs > np.percentile(probs, 95)], axis=0)
+				_r.append(i+0.5)
+				_phi.append(bestmed[-1])
+				_z.append(0)
+			_x, _y = RPHI2XY(np.array(_r), np.array(_phi))
+			_rphiw = go.Scatter3d(x=_x, y=_y, z=_z, mode='lines+markers',\
+				marker=dict(symbol='square', size=2.5, color='darkgreen', opacity=1), line=dict(color='darkgreen', width=3))
+			_r = [8.5, 20.5]
+			_phi = [bestmed[-1]]*2
+			_x, _y = RPHI2XY(np.array(_r), np.array(_phi))
+			_phiw_1comp = go.Scatter3d(x=_x, y=_y, z=[0, 0], mode='lines',\
+				marker=dict(symbol='square', size=1, color='darkgreen', opacity=1), line=dict(dash='longdash', color='darkgreen', width=3))
+		
 
 		### layout format
 		layout = go.Layout(
@@ -738,7 +814,8 @@ if __name__ == '__main__':
 				annotations=[
 					sunText,
 					gcText,
-					*sectorText]
+					*sectorText,
+					]
 			),
 			scene_camera = dict(
 				up=dict(x=0, y=0, z=1),
@@ -754,8 +831,12 @@ if __name__ == '__main__':
 			scene_aspectratio=dict(x=1, y=1, z=.45),
 		)
 
+
 		# Create a Figure object and add the 3d objects to it
-		fig = go.Figure(data=[points, *wires, sun, gc], layout=layout)
+		fig = go.Figure(data=[points, *wires, sun, gc, _rphiw, _phiw_1comp], layout=layout)
+
+		### panel ID
+		fig.add_annotation(x=0.05, xref='paper', y=0.95, yref='paper', text='a', showarrow=False, font=dict(color='black', size=70, family="Arial Black"))
 
 		### Show the plot
 		if 0: fig.show()
@@ -763,14 +844,17 @@ if __name__ == '__main__':
 
 
 	### 3D visualization of residual with plotly
-	if 1:
+	if sin:
 		import plotly.graph_objs as go
-
 		
 		### residual
 		resX, resY, resZ = _convolveData2Grid(step=(0.25, 1), polar=True, residual=False)
-		residual = go.Surface(x=resX, y=resY, z=resZ, surfacecolor=resZ, colorscale='RdYlBu_r', cmin=-.2, cmax=.2, opacity=1,
+		resX, resY, resZ = _excludedXYZ(resX, resY, resZ)
+		residual = go.Surface(x=resX, y=resY, z=resZ, surfacecolor=resZ, colorscale='RdYlBu_r', cmin=-0.2, cmax=0.2, opacity=1,
 			colorbar = dict(thickness=20, title='Residual (kpc)', x=0.7, y=0.05, len=0.3, orientation='h'))
+		#residual = go.Scatter3d(x=resX.ravel(), y=resY.ravel(), z=resZ.ravel(), mode='markers', \
+		#	marker=dict(size=5, color=resZ.ravel(), colorscale='RdYlBu_r', cmin=-0.2, cmax=0.2, opacity=1.0, \
+		#	colorbar=dict(thickness=20, title='Z (kpc)', x=0.24, y=0.7, len=0.05, len=0.3, orientation='h')))
 
 		### residual wireframe
 		wires = []
@@ -802,7 +886,7 @@ if __name__ == '__main__':
 		sectorText = []
 		for i in range(len(sectorPosPhi)):
 			#for i in [0, 10, 14]:#
-			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$Az_{%i}$' % (i+1), showarrow=False, \
+			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$\phi_{%i}$' % (i+1), showarrow=False, \
 				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#000000', size=30)))
 		
 		### bar ellipse
@@ -814,7 +898,7 @@ if __name__ == '__main__':
 		xrot = x * np.cos(pa) + y * np.sin(pa)
 		yrot = - x * np.sin(pa) + y * np.cos(pa)
 
-		bar = go.Mesh3d(x=xrot, y=yrot, z=z, color='lightblue', opacity=0.8, delaunayaxis='z')
+		bar = go.Mesh3d(x=xrot, y=yrot, z=z, color='gray', opacity=0.8, delaunayaxis='z')
 		barText = dict(x=xrot.min(), y=yrot.min(), z=0, text='Bar', showarrow=False,
 			xanchor='left', xshift=5, yanchor='bottom', font=dict(color='#666666', size=16))
 
@@ -903,6 +987,9 @@ if __name__ == '__main__':
 
 		# Create a Figure object and add the 3d objects to it
 		fig = go.Figure(data=[residual, *wires, bar, sun, gc, arrow], layout=layout)#
+
+		### panel ID
+		fig.add_annotation(x=0.05, xref='paper', y=0.95, yref='paper', text='a', showarrow=False, font=dict(color='black', size=60, family="Arial Black"))
 
 		### Show the plot
 		if 0: fig.show()

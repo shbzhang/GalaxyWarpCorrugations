@@ -95,7 +95,7 @@ def inverseKD(Rgal, Az, Z):
 
 
 if __name__ == '__main__':
-	col_mc = '#2f7fa0'
+	col_mc = '#4169e1'#'#2f7fa0'
 
 	data = np.loadtxt('out_para.txt',comments='#')
 	ll = data[:,0]
@@ -108,6 +108,12 @@ if __name__ == '__main__':
 	print('Az range:', az.min(), az.max())
 
 
+	### calculate arm
+	azmin = az.min()-3
+	azmax = az.max()+15
+	PHI = np.linspace(azmin, azmax, 300)
+	R = function_arm(PHI, best_out)
+
 	fig, ax = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=[9,8])
 	plt.subplots_adjust(wspace=0.1,hspace=0.1)
 	pl.rcParams['xtick.direction'] = 'in'
@@ -116,87 +122,139 @@ if __name__ == '__main__':
 
 	### plot cloud
 	scatter_size, scatter_color = mass_distribute(mass)
-	ax[0].scatter(ll, bb, s=scatter_size, c=col_mc, edgecolor='none', alpha=0.3, label='Outer')
+	ax[0].scatter(ll, bb, s=scatter_size*2, **arm_kws_mc)#, label='Outer')
+	ax[0].text(0.02, 0.95, 'Outer', transform=ax[0].transAxes, **arm_kws_text)
 
 	### plot binned average
 	lcen, lrms, bcen, brms = cal_zcen_zrms(ll, bb, weights=mass, binsize=-5, nbin=60, bin0=12.5)
-	ax[0].plot(lcen, bcen, '-', c=darker_hex(col_mc), lw=2, alpha=0.8)
+	ax[0].plot(lcen, bcen, '-', **arm_kws_bin)
 
 	# connect broken with dashed
 	idx = np.isfinite(bcen)
-	ax[0].plot(lcen[idx], bcen[idx], '--', c=darker_hex(col_mc), lw=2, alpha=0.8)
+	ax[0].plot(lcen[idx], bcen[idx], '--', **arm_kws_bin)
 
-	### calculate arm
-	PHI_arm = np.linspace(az.min(), az.max(), 300)
-	R_arm = function_arm(PHI_arm, best_out)
 	### calculate warp
 	### HI
-	Z_hi = cal_warp(R_arm, PHI_arm)
-	ll_hi, bb_hi, dd_hi = gc2g(R_arm, PHI_arm, Z_hi)
-	ax[0].plot(ll_hi, bb_hi, sty_hi, c=col_hi, lw=2, label='HI')
+	Z_hi = cal_warp(R, PHI)
+	ll_hi, bb_hi, dd_hi = gc2g(R, PHI, Z_hi)
+	ax[0].plot(ll_hi, bb_hi, **arm_kws_hi)
 	### warp models
-	z1, z2, z4, z5 = cal_warpc(R_arm, PHI_arm)
-	l1, b1, d1 = gc2g(R_arm, PHI_arm, z1)
-	ax[0].plot(l1, b1, sty_ceph, c=col_ceph, lw=2, label='Cepheids') #Chen b=1')
-	l4, b4, d4 = gc2g(R_arm, PHI_arm, z4)
-	ax[0].plot(l4, b4, sty_co1, c=col_co, lw=2, label='CO 1comp')
-	l5, b5, d5 = gc2g(R_arm, PHI_arm, z5)
-	ax[0].plot(l5, b5, sty_co2, c=col_co, lw=2, label='CO 2comp')
+	z1, z2, z4, z5 = cal_warpc(R, PHI)
+	l1, b1, d1 = gc2g(R, PHI, z1)
+	ax[0].plot(l1, b1, **arm_kws_ceph) #Chen b=1')
+	l4, b4, d4 = gc2g(R, PHI, z4)
+	ax[0].plot(l4, b4, **arm_kws_co1)
+	l5, b5, d5 = gc2g(R, PHI, z5)
+	ax[0].plot(l5, b5, **arm_kws_co2)
 
 	ax[0].minorticks_on()
 	ax[0].set_ylim(-5.25, 5.25)
-	ax[0].set_xlim(230, 15)
-	ax[0].legend()
+	ax[0].set_xlim(l4.max(), l4.min())
+	ax[0].legend(loc = (0.54, 0.04))
+
+	ax[0].tick_params(right=True, direction='in', labelsize=12)
+	ax[0].tick_params(which='minor', right=True, direction='in')
 
 
 	# upper tick
 	import scipy.interpolate as sp_interp
-	phiAxis = np.linspace(-23.2917, 160, 200)
-	lAxis = []
+	phiAxis = np.linspace(azmin, azmax, 200)
+	lenAxis = []
 	for phi in phiAxis:
-		lAxis.append(cal_arm_length(-23.2917, phi, p=best_out))
+		lenAxis.append(cal_arm_length(azmin, phi, p=best_out))
 	### interpolate arm length over phi
-	f = sp_interp.interp1d(lAxis, phiAxis, fill_value='extrapolate')
+	f = sp_interp.interp1d(lenAxis, phiAxis, fill_value='extrapolate')
 
-	lTicks = np.arange(0, 31, 5)
+	upper = ax[0].twiny()
+	# minor
+	lTicks = np.arange(0, 40, 1)
 	phiTicks = f(lTicks)
 	R = function_arm(phiTicks, best_out)
-	lonTick,_,_ = gc2g(R, phiTicks, 0)
-	upper = ax[0].twiny()
-	upper.set_xticks(lonTick)
+	lenTick,_,_ = gc2g(R, phiTicks, 0)
+	upper.set_xticks(lenTick, minor=True)
+	# major
+	lTicks = np.arange(0, 36, 5)
+	phiTicks = f(lTicks)
+	R = function_arm(phiTicks, best_out)
+	lenTick,_,_ = gc2g(R, phiTicks, 0)
+	upper.set_xticks(lenTick)
 	lTickLabels = lTicks.astype(str)
 	lTickLabels[-1] += ' kpc'
-	upper.set_xticklabels(lTickLabels) # add kpc at the end
-	upper.set_xlim(230, 15)
+	upper.set_xticklabels(lTickLabels, fontsize=12) # add kpc at the end
+	upper.set_xlim(l4.max(), l4.min())
 
 
 	### plot residual
 	#zz_res = zz - function_warp((rr, az))
 	zz_res = zz - function_warp( (function_arm(az, best_out), az) )
 	ll_res, bb_res, dd_res = gc2g(rr, az, zz_res)
-	ax[1].scatter(ll_res, bb_res, s=scatter_size, c=col_mc, edgecolor='none', alpha=0.3, label='Outer')
+	ax[1].scatter(ll_res, bb_res, s=scatter_size*2, **arm_kws_mc)
 
 	### plot binned average
 	lcen, lrms, bcen_res, brms_res = cal_zcen_zrms(ll_res, bb_res, weights=mass, binsize=-5, nbin=60, bin0=12.5)
-	ax[1].plot(lcen, bcen_res, '-', c=darker_hex(col_mc), lw=2, alpha=0.8)
+	ax[1].plot(lcen, bcen_res, '-', **arm_kws_bin)
 
 	# connect broken with dashed
 	idx = np.isfinite(bcen)
-	ax[1].plot(lcen[idx], bcen_res[idx], '--', c=darker_hex(col_mc), lw=2, alpha=0.8)
+	ax[1].plot(lcen[idx], bcen_res[idx], '--', **arm_kws_bin)
 
 	### plot H line
-	ax[1].plot([230, 15], [0, 0], sty_co1, color=col_co, lw=2)
+	arm_kws_co1['zorder']=0
+	ax[1].plot([l4[0], l4[-1]], [0, 0], **arm_kws_co1)
 
-	ax[1].set_xlabel('Galactic Longitude (degree)',fontsize=18,fontweight=1.8)
-	ax[1].set_ylabel('Galactic Latitude (degree)',fontsize=18,fontweight=1.8)
+	ax[1].set_xlabel('Galactic Longitude (deg)', fontsize=15, fontweight='bold')#, fontfamily='Georgia', fontstyle='italic')
+	ax[1].set_ylabel('Galactic Latitude (deg)     ', fontsize=15, fontweight='bold')
 	ax[1].minorticks_on()
 	ax[1].set_ylim([-5.25, 5.25])
-	ax[1].grid(True,ls='--',alpha=0.4)
+	ax[1].grid(True, ls='--', alpha=0.4)
+
+	ax[1].tick_params(top=True, right=True, direction='in', labelsize=12)
+	ax[1].tick_params(which='minor', top=True, right=True, direction='in')
+
+	### insert a arm plot
+	insert_arm_plot(ax[0], [0.26, 0.02, 0.36, 0.36], boldArm='out', boldRange=[azmin,azmax])
+
+	if 0:
+		ax[1].set_ylim([-4.75, 6.75])
+		### insert a power spectrum
+		powerAxes = ax[1].inset_axes([0.77, 0.76, 0.21, 0.21])
+		from astropy.timeseries import LombScargle
+		f = sp_interp.interp1d(phiAxis, lenAxis, fill_value='extrapolate')
+		length = f(az)
+		ls = LombScargle(length, zz_res, dy=1/np.sqrt(mass), normalization='standard')
+		frequency, power = ls.autopower(minimum_frequency=1/50, maximum_frequency=1/1)
+		powerAxes.plot(frequency, power, color='#4169e1')
+
+		# Find the dominant period
+		peak = np.max(power)
+		bestFreq = frequency[np.argmax(power)]
+		powerAxes.plot([bestFreq, bestFreq, bestFreq+0.1], [peak+0.01, peak+0.03, peak+0.03], 'k')
+		powerAxes.text(bestFreq+0.11, peak+0.03, '%.1f kpc' % (1/bestFreq), ha='left', va='center')
+		# find the second period
+		peak = np.max(power[20:])
+		bestFreq = frequency[np.argmax(power[20:])+20]
+		powerAxes.plot([bestFreq, bestFreq, bestFreq+0.1], [peak+0.01, peak+0.03, peak+0.03], 'k')
+		powerAxes.text(bestFreq+0.11, peak+0.03, '%.1f kpc' % (1/bestFreq), ha='left', va='center')
+
+		#powerAxes.set_xscale('log')
+		#powerAxes.set_xlim(2, 50)
+		powerAxes.set_ylim(0, np.max(power)*1.5)
+		powerAxes.tick_params(top=False, left=True, direction='in', pad=2)
+		powerAxes.minorticks_on()
+		powerAxes.set_xlabel('frequency (kpc$^{-1}$)', labelpad=-2)
+		powerAxes.set_ylabel('Norm\nPower', labelpad=0)
+		powerAxes.spines['top'].set_visible(False)
+		#powerAxes.spines['left'].set_visible(False)
+		powerAxes.spines['right'].set_visible(False)
+		#powerAxes.yaxis.set_visible(False)
+		powerAxes.patch.set_alpha(0.0)
+
+
+	ax[0].text(-0.075, 1.02, 'a', ha='left', va='top', color='black', font=dict(size=18, family="Arial Black"), transform=ax[0].transAxes)
+	ax[1].text(-0.075, 1.02, 'b', ha='left', va='top', color='black', font=dict(size=18, family="Arial Black"), transform=ax[1].transAxes)
 
 	plt.savefig('fig/out_warp_corrugation_b.png',format='png',bbox_inches='tight', dpi=400)
 	plt.show()
-
-
 
 '''
 def mass_distribute(mass):

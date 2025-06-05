@@ -3,14 +3,17 @@
 import numpy as np
 
 ### Warp Params
-p_1comp = [0,  0.09362826, 8.56849936, 1.05015227, -0.7049789 ]#
-#[-0.0717748888594908, 0.1074529579441738, 7.8409214840721795, 0.9370789056657302, -8.059413168263955]   ##1st exclude 160-200
-p_2comp = [0, 1.19210237e-01, 9.01434283e+00, -3.53962133e+00, -1.24379884e-02, 1.27166892e+01, 2.03007431e+00, -2.04479290e+01]
-#[-0.08225466502024195, 0.10192102165531088, 7.779011564372266, 1.0, -11.000005387066379, -0.11935558287557957, 13.791351404542997, 1.0, -23.76326592401999]##a0, a1, Rw1, bw1, PHIw1, a2, Rw2, bw2, PHIw2 exclude 160-200
+p_1comp = [0,  0.09362826, 8.56849936, 1.05015227, -0.7049789 ]##1st exclude 160-200
+#[-0.0717748888594908, 0.1074529579441738, 7.8409214840721795, 0.9370789056657302, -8.059413168263955]   
+p_2comp = [0, 1.19228266e-01, 9.01450681e+00, -3.53824563e+00, -1.24059941e-02, 1.27147257e+01, 2.03108539e+00, -2.04459975e+01]##2nd exclude 160-200
+#[0, 1.19210237e-01, 9.01434283e+00, -3.53962133e+00, -1.24379884e-02, 1.27166892e+01, 2.03007431e+00, -2.04479290e+01]## not properly burn-in
 
-p_sin1comp = [0.2012454, 7.8246938, 2.78618375, 0.16944783, 0.01766535] # 1comp+sin
 
-p_sin2comp = [0.19869108, 7.958983, 2.61323087, 0.20085326, 0.02240435] # 2comp+sin
+p_sin1comp = [0.20052978, 7.83808911, 2.76825318, 0.17047776, 0.01625255]	# 1comp+sin
+#[0.2012454, 7.8246938, 2.78618375, 0.16944783, 0.01766535] # not properly burn-in
+#p_sin1comp = [0.19725642, 7.49363834, 3.69774322, 0.01476242] #1comp+sin(fix P1=0)
+p_sin2comp = [0.19866392, 7.95872642, 2.61382166, 0.20077682, 0.02240027] # 2comp+sin
+#[0.19869108, 7.958983, 2.61323087, 0.20085326, 0.02240435] # use not properly burn-in 2comp result
 
 ### Arm Params
 best_per=[30.03, 10.062122711773025, 9.839300621559302]  #mass  
@@ -18,17 +21,62 @@ best_out=[20.25195158643863, 13.259894850233614, 11.05257961109539, 3.5009173594
 best_osc=[47, 16.190233947534733, 12.330164850703794] ##47, 16.060484876948312, 11.996988806408883] #mass
 
 
-### color and style
-col_mc = '#008080'#'#1f8097'
-col_co = '#f33a23'
-sty_co1 = '--'
-sty_co2 = '-'
-col_hi = '#df8f0e'
-sty_hi = ':'
-col_ceph = '#8f00ff'#'#751fdf'#
-sty_ceph = ':'
-col_text = '#1e3f66'
-col_err = '#A9A9A9'
+colorText = '#1e3f66'
+#HI
+colorHI = 'gray'
+styleHI = ':'
+labelHI = 'HI'
+#Cepheids
+colorCeph = 'gray'
+styleCeph = '--'
+labelCeph = 'Cepheids'
+#CO 1comp
+colorCO1 = 'coral'
+styleCO1 = ':'
+labelCO1 = 'CO 1comp'
+#CO 2comp
+colorCO2 = 'coral'
+styleCO2 = '--'
+labelCO2 = 'CO 2comp'
+
+
+def darkerColor(color_name, factor=0.5):
+	### 将一个颜色变暗
+	import matplotlib.colors as mcolors
+	r, g, b = mcolors.to_rgb(color_name)
+	r = max(0, min(1, r*factor))
+	g = max(0, min(1, g*factor))
+	b = max(0, min(1, b*factor))
+	return (r, g, b)
+
+### kws in ring plots: warp1.py / warp1_xf.py / warp_resi.py
+ring_kws_mc   = dict(color='#2074b0', edgecolors='none', alpha=0.2, zorder=5)
+ring_kws_bin  = dict(color=darkerColor('#2074b0'),  lw=2, alpha=0.8, zorder=20)#5ABEF0
+ring_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1,   label=labelHI,   zorder=11)
+ring_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1,   label=labelCeph, zorder=12)
+ring_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=0.8, label=labelCO1,  zorder=13)
+ring_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=0.8, label=labelCO2,  zorder=14)
+ring_kws_text = dict(color=colorText, ha='left', va='top', fontsize=11, fontweight='bold')
+
+### kws in radial plots: corrugation1b.py, corrugation_resi.py, corrugation_resi_xf.py
+rad_kws_mc   = dict(color='#008080', edgecolors='none', alpha=0.3, zorder=5)
+rad_kws_err  = dict(color=darkerColor('#008080'), fmt='.', markersize=5., elinewidth = 1, capsize=2, zorder=10)
+rad_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1.5, label=labelHI,   zorder=11)
+rad_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1.5, label=labelCeph, zorder=12)
+rad_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=1,   label=labelCO1,  zorder=13)
+rad_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zorder=14)
+rad_kws_sin  = dict(color=colorCO1,  ls=':',       lw=3,   label='SIN comp',zorder=11)
+rad_kws_text = dict(color=colorText, ha='left', va='top', fontsize=11, fontweight='bold')
+
+### kws in arm plots: warp_out.py / warp_per.py / warp_osc.py / warp_osc_b.py
+arm_kws_mc   = dict(color='#4169e1', edgecolors='none', alpha=0.2, zorder=5)
+arm_kws_bin  = dict(color=darkerColor('#4169e1'),  lw=2, alpha=0.8, zorder=20)
+arm_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1.5, label=labelHI,   zorder=11)
+arm_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1.5, label=labelCeph, zorder=12)
+arm_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=1,   label=labelCO1,  zorder=13)
+arm_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zorder=14)
+arm_kws_text = dict(color=colorText, ha='left', va='top', fontsize=14, fontweight='bold')
+
 
 def funciton_loglinear(x,a,b):
 	y =  np.log(a)-x/b
@@ -115,27 +163,29 @@ def mass_distribute(mass):
 	return normSize, normColor
 
 
-def cal_warp(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
-	# regulate R, PHI
+def cal_warp(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200), scale=0.95):
+	# regulate R, PHI *95%
 	if isinstance(R, (int, float)):
 		R = np.ones(PHI.shape) * R
 	else:
 		PHI = np.ones(R.shape) * PHI
 
+	Rs=R/scale
+
 	#   R=R+0.5    # considering the different rotaion curve
 	w1p = [9, 197, 10, -3.1] # [k0,k1,rk1,k2]
-	w1 = w1p[0] + w1p[1]*(R-w1p[2]) + w1p[3]*(R-w1p[2])**2
+	w1 = w1p[0] + w1p[1]*(Rs-w1p[2]) + w1p[3]*(Rs-w1p[2])**2
 	w0p = [-66, 150, 15, -0.47] # [k0,k1,rk1,k2]
-	w0 = w0p[0] + w0p[1]*(R-w0p[2]) + w0p[3]*(R-w0p[2])**2
+	w0 = w0p[0] + w0p[1]*(Rs-w0p[2]) + w0p[3]*(Rs-w0p[2])**2
 	w2p = [-70,171,15,-5.3] # [k0,k1,rk1,k2]
-	w2 = w2p[0] + w2p[1]*(R-w2p[2]) + w2p[3]*(R-w2p[2])**2
+	w2 = w2p[0] + w2p[1]*(Rs-w2p[2]) + w2p[3]*(Rs-w2p[2])**2
 
 	w = w1*np.sin(np.deg2rad(PHI))
 
-	idx = (w2 >= 150) & (R > 15)
+	idx = (w2 >= 150) & (Rs > 15)
 	w[idx] = (w0 + w1*np.sin(np.deg2rad(PHI)) + w2*np.sin(np.deg2rad(2.*PHI)))[idx]
 
-	idx = (w2 < 150) & (R > 15)
+	idx = (w2 < 150) & (Rs > 15)
 	w[idx] = (w0+w1*np.sin(np.deg2rad(PHI)))[idx]
 	'''
 	if (w2 >= 150) & (R > 15):
@@ -145,7 +195,7 @@ def cal_warp(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
 	else:
 		w = w1*np.sin(np.deg2rad(PHI))
 	'''
-	return w/1000.
+	return w/1000. *scale
 
 
 def cal_warpc(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
@@ -180,6 +230,7 @@ def weighted_avg_and_std(values, weights):
 
 
 def cal_zcen_zrms(az, *zz, weights=1, binsize = 6, nbin=60, bin0=160):
+	### bin zz
 	bin_az, bin_zz= [], []
 	for i in range(nbin):
 		PHI1 = bin0 - i * binsize
@@ -238,6 +289,7 @@ def cal_zcen_zrms(az, *zz, weights=1, binsize = 6, nbin=60, bin0=160):
 #            ycen.append(temp_rcen*np.cos(np.deg2rad(PHI2+bi/2.)))
 	return(zcen,zrms,vcen,vrms,rcen,rrms,azcen,azrms,z_err,v_err,r_err,az_err,zcen_err,vcen_err,rcen_err,azcen_err)
 	'''
+
 def cal_arm_length(phi0, phi1, p=best_out):
 	from scipy.integrate import quad
 	def dR_dPHI(PHI, h=1e-5):
@@ -249,32 +301,49 @@ def cal_arm_length(phi0, phi1, p=best_out):
 	return quad(dL, phi0, phi1)[0]
 
 
-def darker_hex(hex_color, factor=0.4):
-	"""
-	将一个十六进制颜色变暗。
-	
-	:param hex_color: 十六进制颜色字符串，可以带或不带 '#' 前缀
-	:param factor: 减少比例，默认是0.9，即减少10%
-	:return: 变暗后的十六进制颜色字符串
-	"""
-	# 如果有 '#' 前缀，去掉它
-	if hex_color.startswith('#'):
-		hex_color = hex_color[1:]
-	
-	# 将hex转换为RGB元组
-	r = int(hex_color[0:2], 16)
-	g = int(hex_color[2:4], 16)
-	b = int(hex_color[4:6], 16)
-	
-	# 计算新的RGB值
-	r_dark = int(r * factor)
-	g_dark = int(g * factor)
-	b_dark = int(b * factor)
-	
-	# 确保RGB值在0到255之间
-	r_dark = max(0, min(255, r_dark))
-	g_dark = max(0, min(255, g_dark))
-	b_dark = max(0, min(255, b_dark))
-	
-	# 将RGB转换回hex
-	return f'#{r_dark:02x}{g_dark:02x}{b_dark:02x}'.upper()
+def insert_arm_plot(ax, bbox, boldArm='per', boldRange=[-50, 100]):
+	### a sketch of arm in ax[0]
+	from matplotlib.patches import Ellipse
+	sk = ax.inset_axes(bbox)
+
+	def plotArm(ax, phiRange, p, **kws):
+		phi = np.linspace(*phiRange, 1400)
+		r = function_arm(phi, p)
+		x = r*np.sin(phi/180*np.pi)
+		y = r*np.cos(phi/180*np.pi)
+		ax.plot(x, y, **kws)
+
+	arm_kws = dict(lw=0.5)
+	plotArm(sk, (-170, 220), [0, 6.5, 12], color='k', **arm_kws) #sag
+	plotArm(sk, ( -50, 45), [0, 8.15, 12], color='pink', **arm_kws) #loc
+	plotArm(sk, ( -50, 270), [0, 10, 12], color=(0,0.2,0), **arm_kws) #per
+	plotArm(sk, ( -48, 420), [0, 13, 12], color=(0.4,0,0), **arm_kws) #out
+	plotArm(sk, ( -45, 450), [0, 19, 12], color=(0,0,0.4), **arm_kws) #osc
+
+	if boldArm == 'per': p = [0, 10, 12]
+	elif boldArm == 'out': p = [0, 13, 12]
+	elif boldArm == 'osc': p = [0, 19, 12]
+	plotArm(sk, boldRange, p, color=arm_kws_mc['color'], lw=3, alpha=0.7)
+
+	ell = Ellipse(xy = (0,0), width=3, height=7, angle=-30.5, facecolor='gray', edgecolor='none')
+	sk.add_patch(ell)
+	sk.plot(0, 8.15, 'r.', ms=4)
+	sk.plot(0, 0, 'k.', ms=4)
+
+	sk.set_aspect('equal')
+	sk.axis('off')
+	sk.set_xlim(-15, 15)
+	sk.set_ylim(-12, 20)
+
+
+'''
+def readCepheidCat(cat='allGalCep.listID'):
+	import pandas as pd
+	df = pd.read_csv(cat, comment='#', sep='\s+')
+	l = df[]
+	return df
+
+
+a = readCepheidCat()
+print(a.shape)
+'''
