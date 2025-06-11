@@ -59,6 +59,7 @@ if __name__ == '__main__':
 	ax[0].minorticks_on()
 	ax[0].set_xlim(azmin, azmax+20)
 	ax[0].set_ylim(-0.4, 0.6)
+	ax[0].set_ylabel('Z (kpc)', fontsize=15, fontweight='bold')
 
 	ax[0].tick_params(right=True, direction='in', labelsize=12)#, labelsize=1000/self.dpi)
 	ax[0].tick_params(which='minor', right=True, direction='in')#, labelsize=1000/self.dpi)
@@ -66,11 +67,11 @@ if __name__ == '__main__':
 	# upper tick
 	import scipy.interpolate as sp_interp
 	phiAxis = np.linspace(azmin, azmax+20, 200)
-	lAxis = []
+	lenAxis = []
 	for phi in phiAxis:
-		lAxis.append(cal_arm_length(azmin, phi, p=best_per))
+		lenAxis.append(cal_arm_length(azmin, phi, p=best_per))
 	### interpolate arm length over phi
-	f = sp_interp.interp1d(lAxis, phiAxis, fill_value='extrapolate')
+	f = sp_interp.interp1d(lenAxis, phiAxis, fill_value='extrapolate')
 
 	upper = ax[0].twiny()
 	# minor
@@ -88,7 +89,7 @@ if __name__ == '__main__':
 
 	### plot residual
 	#zz_res = zz - function_warp((rr, az))
-	zz_res = zz - function_warp( (function_arm(az, best_per), az) )
+	zz_res = zz - function_warp( (function_arm(az, best_per), az), p=p_1comp)
 	ax[1].scatter(az, zz_res, s=scatter_size*2, **arm_kws_mc)
 
 	### plot binned average
@@ -110,12 +111,49 @@ if __name__ == '__main__':
 	#ax[1].xticks([-25,0,25,50,75,100,125,150],['-25','0','25','50','75','100','125','150'],fontsize=14,fontweight=1.8)
 	ax[1].grid(True, ls='--', alpha=0.4)
 	ax[1].set_xlabel('Galactocentric Azimuth (deg)', fontsize=15, fontweight='bold')
-	ax[1].set_ylabel('Z (kpc)', fontsize=15, fontweight='bold')
+	ax[1].set_ylabel('Residuals in Z (kpc)', fontsize=15, fontweight='bold')
 
 	ax[1].tick_params(top=True, right=True, direction='in', labelsize=12)#, labelsize=1000/self.dpi)
 	ax[1].tick_params(which='minor', top=True, right=True, direction='in')#, labelsize=1000/self.dpi)
 
 	insert_arm_plot(ax[0], [0.74, 0.15, 0.36, 0.36], boldArm='per', boldRange=[azmin,azmax])
+
+	if 0:
+		ax[1].set_ylim([-0.4, 0.65])
+		### insert a power spectrum
+		#powerAxes = ax[1].inset_axes([0.21, 0.12, 0.21, 0.21])
+		powerAxes = ax[1].inset_axes([0.77, 0.76, 0.21, 0.21])
+		from astropy.timeseries import LombScargle
+		f = sp_interp.interp1d(phiAxis, lenAxis, fill_value='extrapolate')
+		length = f(az)
+		ls = LombScargle(length, zz_res, dy=1/np.sqrt(mass), normalization='standard')
+		frequency, power = ls.autopower(minimum_frequency=1/50, maximum_frequency=1/1)
+		powerAxes.plot(frequency, power, color='#4169e1')
+
+		# Find the dominant period
+		peak = np.max(power)
+		bestFreq = frequency[np.argmax(power)]
+		powerAxes.plot([bestFreq, bestFreq, bestFreq+0.1], [peak+0.01, peak+0.03, peak+0.03], 'k', lw=0.5, alpha=0.8)
+		powerAxes.text(bestFreq+0.11, peak+0.03, '%.1f kpc' % (1/bestFreq), ha='left', va='center')
+		# find the second period
+		#powerAxes.plot([frequency[20],frequency[20]], [0,1])
+		peak = np.max(power[20:])
+		bestFreq = frequency[np.argmax(power[20:])+20]
+		powerAxes.plot([bestFreq, bestFreq, bestFreq+0.1], [peak+0.01, peak+0.03, peak+0.03], 'k', lw=0.5, alpha=0.8)
+		powerAxes.text(bestFreq+0.11, peak+0.03, '%.1f kpc' % (1/bestFreq), ha='left', va='center')
+
+		#powerAxes.set_xscale('log')
+		powerAxes.set_xlim(0, 1)
+		powerAxes.set_ylim(-0.01, np.max(power)*1.6)
+		powerAxes.tick_params(top=False, left=True, direction='in', pad=3)
+		powerAxes.minorticks_on()
+		powerAxes.set_xlabel('frequency (kpc$^{-1}$)', labelpad=-2)
+		powerAxes.set_ylabel('Norm\nPower', labelpad=0)
+		powerAxes.spines['top'].set_visible(False)
+		#powerAxes.spines['left'].set_visible(False)
+		powerAxes.spines['right'].set_visible(False)
+		#powerAxes.yaxis.set_visible(False)
+		powerAxes.patch.set_alpha(0.0)
 
 
 	plt.savefig('fig/per_warp_corrugation.png',format='png',bbox_inches='tight', dpi=400) 

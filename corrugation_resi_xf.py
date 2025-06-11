@@ -71,7 +71,8 @@ if __name__ == '__main__':
 			ax[i].plot([0, 30], [0, 0], **rad_kws_co2)
 
 		### plot text
-		text = '[%s$^{\circ}$, %s$^{\circ}$]' %(theta1, theta2)
+		rad_kws_text['fontsize']=14
+		text = r'$\mathbf{\phi_{%i}}$' % (i+1)#=[%s$^{\circ}$, %s$^{\circ}$]' % (i+1, theta1, theta2)
 		ax[i].text(0.02, 0.98, text, transform=ax[i].transAxes, **rad_kws_text)
 
 		### ticks
@@ -89,9 +90,13 @@ if __name__ == '__main__':
 			phiaxis = np.repeat(34, 200)
 			zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], sin=p_sin1comp if comp==1 else p_sin2comp)
 			ax[i].plot(raxis, zaxis, **rad_kws_sin)
+			### arm labels
+			ax[i].plot([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
+			for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], ['   Perseus', '   Outer', 'OSC']):
+				ax[i].text(x,y-0.1,t, ha='center', va='top', fontsize=12)
 
 			ax[i].set_xlabel('R (kpc)', fontsize=13, fontweight='bold')
-			ax[i].set_ylabel('Z (kpc)', fontsize=13, fontweight='bold')
+			ax[i].set_ylabel('Residuals in Z (kpc)', fontsize=13, fontweight='bold')
 		if i>=10:
 			xtk = ax[i].get_xticks().astype(str)
 			xtk[2] = '  '+xtk[2]	#shift '8' a little right

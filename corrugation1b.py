@@ -67,7 +67,7 @@ if __name__ == '__main__':
 		ax[i].plot(gr_axis, zw5, **rad_kws_co2)
 
 		### plot text
-		text = '[%s$^{\circ}$, %s$^{\circ}$]' %(theta1, theta2)
+		text = r'$\mathbf{\phi_{%i}}$=[%s$^{\circ}$, %s$^{\circ}$]' % (i+1, theta1, theta2)
 		ax[i].text(0.02, 0.98, text, transform=ax[i].transAxes, **rad_kws_text)
 
 		### ticks
@@ -81,6 +81,10 @@ if __name__ == '__main__':
 
 
 		if i == 10:
+			### arm labels
+			ax[i].plot([9.6, 12.6, 17.1], [-0.4, 0.0, 0.2], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
+			for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, 0.0, 0.2], ['   Perseus', '   Outer', 'OSC']):
+				ax[i].text(x,y-0.1,t, ha='center', va='top', fontsize=12)
 			ax[i].set_xlabel('R (kpc)', fontsize=13, fontweight='bold')
 			ax[i].set_ylabel('Z (kpc)', fontsize=13, fontweight='bold')
 		if i>=10:

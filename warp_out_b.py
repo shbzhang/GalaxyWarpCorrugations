@@ -151,6 +151,8 @@ if __name__ == '__main__':
 	ax[0].set_ylim(-5.25, 5.25)
 	ax[0].set_xlim(l4.max(), l4.min())
 	ax[0].legend(loc = (0.54, 0.04))
+	ax[0].set_ylabel('  (deg)', fontsize=15, fontweight='bold')
+	ax[0].text(-0.065, 0.38, 'b', va='center', ha='center', fontsize=15, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[0].transAxes, rotation=90)
 
 	ax[0].tick_params(right=True, direction='in', labelsize=12)
 	ax[0].tick_params(which='minor', right=True, direction='in')
@@ -202,8 +204,14 @@ if __name__ == '__main__':
 	arm_kws_co1['zorder']=0
 	ax[1].plot([l4[0], l4[-1]], [0, 0], **arm_kws_co1)
 
-	ax[1].set_xlabel('Galactic Longitude (deg)', fontsize=15, fontweight='bold')#, fontfamily='Georgia', fontstyle='italic')
-	ax[1].set_ylabel('Galactic Latitude (deg)     ', fontsize=15, fontweight='bold')
+	#ax[1].set_xlabel('Galactic Longitude (deg)', fontsize=15, fontweight='bold')#, fontfamily='Georgia', fontstyle='italic')
+	#ax[1].set_ylabel('Galactic Latitude (deg)     ', fontsize=15, fontweight='bold')
+	ax[1].set_xlabel('  (deg)', fontsize=15, fontweight='bold')
+	ax[1].text(0.45, -0.13, 'l', va='center', ha='center', fontsize=15, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[1].transAxes)
+
+	ax[1].set_ylabel('Residuals in    (deg)     ', fontsize=15, fontweight='bold')
+	ax[1].text(-0.065, 0.57, 'b', va='center', ha='center', fontsize=15, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[1].transAxes, rotation=90)
+
 	ax[1].minorticks_on()
 	ax[1].set_ylim([-5.25, 5.25])
 	ax[1].grid(True, ls='--', alpha=0.4)
@@ -213,6 +221,7 @@ if __name__ == '__main__':
 
 	### insert a arm plot
 	insert_arm_plot(ax[0], [0.26, 0.02, 0.36, 0.36], boldArm='out', boldRange=[azmin,azmax])
+
 
 	if 0:
 		ax[1].set_ylim([-4.75, 6.75])

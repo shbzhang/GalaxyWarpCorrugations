@@ -7,9 +7,9 @@ import os
 np.random.seed(42)
 
 #comp1/comp2 * dR * sin
-component = 1
+component = 2
 excluded = True
-sin = False 	#set to True to fit sin component and plot 3D residual
+sin = True 	#set to True to fit sin component and plot 3D residual
 print('Running with %i component(s) and %s l in [195, 200] and %s SIN component' % (component, 'excluding' if excluded else 'including', 'with' if sin else 'without'))
 
 if component == 1: path = 'oneComp'
@@ -847,6 +847,7 @@ if __name__ == '__main__':
 	if sin:
 		import plotly.graph_objs as go
 		
+		
 		### residual
 		resX, resY, resZ = _convolveData2Grid(step=(0.25, 1), polar=True, residual=False)
 		resX, resY, resZ = _excludedXYZ(resX, resY, resZ)
@@ -855,6 +856,7 @@ if __name__ == '__main__':
 		#residual = go.Scatter3d(x=resX.ravel(), y=resY.ravel(), z=resZ.ravel(), mode='markers', \
 		#	marker=dict(size=5, color=resZ.ravel(), colorscale='RdYlBu_r', cmin=-0.2, cmax=0.2, opacity=1.0, \
 		#	colorbar=dict(thickness=20, title='Z (kpc)', x=0.24, y=0.7, len=0.05, len=0.3, orientation='h')))
+		
 
 		### residual wireframe
 		wires = []
@@ -953,7 +955,7 @@ if __name__ == '__main__':
 					backgroundcolor='white',
 					tickfont=dict(size=12)
 				),
-				zaxis_title='Z (kpc)',
+				zaxis_title='Residuals in Z (kpc)',#𝛿
 				zaxis=dict(
 					range=[-1, 1.01], tickvals=np.arange(-0.5, 2, 0.5),
 					ticks='outside', tickwidth=3,

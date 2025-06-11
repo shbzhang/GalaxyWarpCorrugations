@@ -58,6 +58,7 @@ if __name__ == '__main__':
 	ax[0].minorticks_on()
 	ax[0].set_xlim(azmin, azmax)
 	ax[0].set_ylim(-0.6, 0.8)
+	ax[0].set_ylabel('Z (kpc)', fontsize=15, fontweight='bold')
 
 	ax[0].tick_params(right=True, direction='in', labelsize=12)#, labelsize=1000/self.dpi)
 	ax[0].tick_params(which='minor', right=True, direction='in')#, labelsize=1000/self.dpi)
@@ -111,7 +112,7 @@ if __name__ == '__main__':
 	#ax[1].xticks([-25,0,25,50,75,100,125,150],['-25','0','25','50','75','100','125','150'],fontsize=14,fontweight=1.8)
 	ax[1].grid(True, ls='--', alpha=0.4)
 	ax[1].set_xlabel('Galactocentric Azimuth (deg)', fontsize=15, fontweight='bold')
-	ax[1].set_ylabel('Z (kpc)', fontsize=15, fontweight='bold')
+	ax[1].set_ylabel('Residuals in Z (kpc)', fontsize=15, fontweight='bold')
 
 	ax[1].tick_params(top=True, right=True, direction='in', labelsize=12)#, labelsize=1000/self.dpi)
 	ax[1].tick_params(which='minor', top=True, right=True, direction='in')#, labelsize=1000/self.dpi)

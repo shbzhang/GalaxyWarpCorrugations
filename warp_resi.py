@@ -11,7 +11,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-comp=1
+comp=2
 
 if __name__ == '__main__':
 	az_min, az_max = -30, 165
@@ -115,7 +115,7 @@ if __name__ == '__main__':
 			ax[i].set_xticklabels([])
 		if i == 5:
 			ax[i].set_xlabel('Galactocentric Azimuth (deg)', fontsize=13, fontweight='bold')
-			ax[i].set_ylabel('Z (kpc)', fontsize=13, fontweight='bold')  
+			ax[i].set_ylabel('Residuals in Z (kpc)', fontsize=13, fontweight='bold')
 
 		### slightly shift upper ticklabel position to avoid overlap
 		if i<=2: upper.set_xticklabels(['  0', '20', None, None, None]) # avoid overlap
