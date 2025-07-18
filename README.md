@@ -6,9 +6,7 @@ Click the image to open the interactive version.
 
 ### 📌 Figure 1a: m = 1 CO warp mode
 
-<a href="https://shbzhang.github.io/GalaxyWarpCorrugations/median_model_1comp.html" target="_blank">
-  <img src="median_model_1comp.png" alt="Go to interactive figure" width=“800”>
-</a>
+[![Figure 1a](median_model_1comp.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/median_model_1comp.html)
 
 ---
 
