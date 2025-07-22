@@ -9,7 +9,7 @@ from mcmcFittingFunction0129 import function
 artist = 0
 pWarp = p_1comp
 zScale = 8
-
+html = True
 ### Plotter
 plotter = pv.Plotter(window_size=(2400,1600))
 
@@ -117,7 +117,10 @@ def sigmoid(x, x0=0, width=1):
 	return 1/(1+np.exp(-(x-x0)/width)) 
 
 ### Create a structured grid
-X, Y, Z, R, Phi = createPlane(r = np.linspace(0, 31, 105*2), phi = np.linspace(-90, 270, 360*2))
+if html:
+	X, Y, Z, R, Phi = createPlane(r = np.linspace(0, 23, 100), phi = np.linspace(-90, 270, 360))
+else:
+	X, Y, Z, R, Phi = createPlane(r = np.linspace(0, 31, 105*2), phi = np.linspace(-90, 270, 360*2))
 plane = pv.StructuredGrid(X, Y, Z)
 
 ### texture
@@ -126,8 +129,8 @@ if artist:
 	O,U,V = textureOUV(texture.dimensions, gc=(1500, 1660), sun=(1500, 2280))
 	plane.texture_map_to_plane(origin=O, point_u=U, point_v=V, inplace=True)
 else:
-	if 0:
-		texture = pv.read_texture('art_Zheng.jpg')
+	if html:
+		texture = pv.read_texture('art_Zheng.png')
 		O,U,V = textureOUV(texture.dimensions, gc=(1266, 1206), sun=(1266, 756))
 		plane.texture_map_to_plane(origin=O, point_u=U, point_v=V, inplace=True)
 	else:
@@ -208,14 +211,34 @@ plotter.add_mesh(sun_core, color=(255, 255, 0))
 #sun_glow = pv.Sphere(radius=0.3, center=(0, 8.15, 0), theta_resolution=30, phi_resolution=30)
 #plotter.add_mesh(sun_glow, color=(255, 255, 255), opacity=0.3, smooth_shading=True)
 
-
 ### annotation
-plotter.add_lines(np.array([[8,-4.2,0], [8,-4.2,8]]), color='w', width=3)
-plotter.add_point_labels([[8,-4.2,8]], ['Outer Arm\nCorrugation'], font_size=40, text_color='w', shape=False)
-plotter.add_lines(np.array([[14,0,0], [14,0,8]]), color='w', width=3)
-plotter.add_point_labels([[14,0,8]], ['Warp'], font_size=40, text_color='w', shape=False)
-plotter.add_lines(np.array([[8.5,12,0], [8.5,12,8]]), color='w', width=3)
-plotter.add_point_labels([[8.5,12,8]], ['Bar-direction\nCorrugation'], font_size=40, text_color='w', shape=False)
+plotter.add_lines(np.array([[8,-4.2,0.3], [8,-4.2,8]]), color='w', width=3)
+plotter.add_lines(np.array([[14,0,5.9], [14,0,8]]), color='w', width=3)
+plotter.add_lines(np.array([[8.5,12,3], [8.5,12,8]]), color='w', width=3)
+if not html:
+	plotter.add_point_labels([[8,-4.2,8]], ['Outer Arm\nCorrugation'], font_size=40, text_color='w', shape=False)
+	plotter.add_point_labels([[14,0,8]], ['Warp'], font_size=40, text_color='w', shape=False)
+	plotter.add_point_labels([[8.5,12,8]], ['Bar-direction\nCorrugation'], font_size=40, text_color='w', shape=False)
+else:
+	text1 = pv.Text3D('Outer Arm\nCorrugation', depth=0.2)
+	text1.scale(0.45, inplace=True)             # Font size
+	text1.rotate_z(-90, inplace=True)           # Rotate around Z
+	text1.rotate_y(-90, inplace=True)           # Rotate around Z
+	text1.translate([8, -4.2, 8+1], inplace=True)  # Position in 3D
+	plotter.add_mesh(text1, color='white')
+	text2 = pv.Text3D('Warp', depth=0.2)
+	text2.scale(0.45, inplace=True)             # Font size
+	text2.rotate_z(-90, inplace=True)           # Rotate around Z
+	text2.rotate_y(-90, inplace=True)           # Rotate around Z
+	text2.translate([14,0,8+0.5], inplace=True)  # Position in 3D
+	plotter.add_mesh(text2, color='white')
+	text3 = pv.Text3D('Bar-direction\nCorrugation', depth=0.2)
+	text3.scale(0.45, inplace=True)             # Font size
+	text3.rotate_z(-90, inplace=True)           # Rotate around Z
+	text3.rotate_y(-90, inplace=True)           # Rotate around Z
+	text3.translate([8.5,12,8+1], inplace=True)  # Position in 3D
+	plotter.add_mesh(text3, color='white')
+
 
 # setting
 plotter.set_scale(xscale=1, yscale=1, zscale=1)   #scale z by 10
@@ -239,8 +262,12 @@ plotter.show_bounds(bounds=[-30, 30, -30, 30, -5, 5], grid=True, bold=True, \
 	ylabel='Y (kpc)', \
 	zlabel='Z - model (kpc)')
 '''
-plotter.show()
-#plotter.save_graphic('fig/schematic.eps')
-plotter.screenshot('fig/schematic.png')
-
+if html:
+	#plotter.show()
+	plotter.export_html("fig/schematic.html")
+	#plotter.screenshot('fig/schematic.png')
+else:
+	plotter.show()
+	#plotter.save_graphic('fig/schematic.eps')
+	plotter.screenshot('fig/schematic.png')
 

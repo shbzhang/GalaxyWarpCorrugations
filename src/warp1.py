@@ -140,7 +140,8 @@ if __name__ == '__main__':
 		if i==len(ax)-1: ax[i].legend(loc=[0.32, 0], handletextpad=0.2, frameon=False, borderpad=0.2, labelspacing=0.1)
 
 	### panel ID
-	ax[0].text(-0.30, 0.94, 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	if not ob:
+		ax[0].text(-0.30, 0.94, 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
 
 	fig.savefig('fig/az_z_warp%s%s.%s' % (suffix, '_OB' if ob else '', mpl.rcParams['savefig.format']), bbox_inches='tight')

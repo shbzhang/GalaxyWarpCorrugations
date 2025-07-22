@@ -413,6 +413,8 @@ def gc2g(Rgal, Az, Z):
 	l = l%360
 	return l,b,d
 
+
+### import OB star catalog
 from astropy.io import fits
 hdu = fits.open('OBstars.fits')
 data = hdu[1].data
@@ -427,6 +429,11 @@ starR, starAz, starZ = g2gc(starL, starB, starD)
 starX = starD * np.cos(starB*d2r) * np.cos(starL*d2r) - 8.15
 starY = starD * np.cos(starB*d2r) * np.sin(starL*d2r)
 
+
+### digit to unicode of subscript
+def to_subscript(n):
+    sub_map = str.maketrans('0123456789', '₀₁₂₃₄₅₆₇₈₉')
+    return str(n).translate(sub_map)
 
 '''
 def readCepheidCat(cat='allGalCep.listID'):

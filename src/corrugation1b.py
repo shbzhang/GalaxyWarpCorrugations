@@ -106,7 +106,8 @@ if __name__ == '__main__':
 		ax[i].set_xlim([5 if ob else 8, 21.5])
 		ax[i].set_ylim([-0.8, 1.4])
 
-	ax[0].text(-0.22, 0.9, 'c', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	if not ob:
+		ax[0].text(-0.22, 0.9, 'c', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
 	plt.savefig('fig/r_z_corrugation%s.%s' % ('_OB' if ob else '', mpl.rcParams['savefig.format']), bbox_inches='tight')
 	plt.savefig('fig/r_z_corrugation%s.png' % ('_OB' if ob else ''), bbox_inches='tight')
