@@ -319,7 +319,7 @@ if __name__ == '__main__':
 		data = np.vstack([R, PHI, Z, mass])
 
 
-	if 0:
+	if 1:
 		###run MCMC
 		sampler, pos, prob, state = main(data)
 		#samples = sampler.flatchain
@@ -565,7 +565,7 @@ if __name__ == '__main__':
 
 
 	### 3D visualization with plotly
-	if 0 and not sin:
+	if not sin:
 		import plotly.graph_objs as go
 		figscale = 0.5
 		fontscale = 1.3
@@ -742,7 +742,7 @@ if __name__ == '__main__':
 
 
 	### 3D visualization of residual with plotly
-	if 0 and sin:
+	if sin:
 		figscale = 0.62
 		fontscale = 1.3
 
