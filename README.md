@@ -2,7 +2,7 @@
 cf. [Paper](LINK_HERE)
 
 # System requirements:
-The code has been tested and verified to run on Python 3.8, with dependencies:
+The code has been tested and verified to run on Python 3.8, with key dependencies:
   - **numpy** 1.23.5
   - **emcee** 3.1.2
   - **matplotlib** 3.7.5
@@ -15,9 +15,11 @@ git clone https://github.com/shbzhang/GalaxyWarpCorrugations
 ```
 
 # Data availability:
-The catalog of clouds used in the paper is available at [Science Data Bank](https://www.scidb.cn) via doi:10.57760/sciencedb.1309
+The catalog of clouds used in the paper is available at [Science Data Bank](https://www.scidb.cn) via `doi:10.57760/sciencedb.1309`
 
 After downloading the catalog, modify `src/mcmcFittingFunction0129.py` with your settings. 
+Modify `sin` to switch between warp fitting and corrugation fitting.
+Modify `params` to switch a parameter between free and fixed.
 Run a McMC fitting process with:
 ```
 python src/mcmcFittingFunction0129.py
