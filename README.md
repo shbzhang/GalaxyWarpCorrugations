@@ -13,13 +13,15 @@ The code has been tested and verified to run on Python 3.8, with dependencies:
 ```
 git clone https://github.com/shbzhang/GalaxyWarpCorrugations
 ```
-Edit src/mcmcFittingFunction0129.py and run a McMC fitting process with:
-```
-python src/mcmcFittingFunction0129.py
-```
 
 # Data availability:
 The catalog of clouds used in the paper is available at [Science Data Bank](https://www.scidb.cn)
+
+After downloading the catalog, modify `src/mcmcFittingFunction0129.py` with your settings. 
+run a McMC fitting process with:
+```
+python src/mcmcFittingFunction0129.py
+```
 
 # Interactive figures: 
 Below are preview of 3D interactive figures.
