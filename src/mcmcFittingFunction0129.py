@@ -17,6 +17,7 @@ if component == 1: path = 'oneComp'
 elif component ==2: path = 'twoComp'
 else: pass
 if excluded: path += 'Exc'
+os.makedirs(path, exist_ok=True)
 
 #cat = 'residual.razm'
 #cat = 'cloud.razm'
