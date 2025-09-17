@@ -18,7 +18,7 @@ git clone https://github.com/shbzhang/GalaxyWarpCorrugations
 The catalog of clouds used in the paper is available at [Science Data Bank](https://www.scidb.cn)
 
 After downloading the catalog, modify `src/mcmcFittingFunction0129.py` with your settings. 
-run a McMC fitting process with:
+Run a McMC fitting process with:
 ```
 python src/mcmcFittingFunction0129.py
 ```
