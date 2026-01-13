@@ -4,19 +4,29 @@ from matplotlib import colormaps
 import emcee
 import corner
 import os
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from scipy.ndimage import gaussian_filter
+from scipy.spatial import cKDTree
+from scipy.interpolate import RegularGridInterpolator
+from shared import textwidth, gc2g, g2gc
 
 np.random.seed(42)
 
 #comp1/comp2 * dR * sin
 component = 2
-excluded = True
-sin = False 	#set to True to fit sin component and plot 3D residual
-print('Running with %i component(s) and %s l in [195, 200] and %s SIN component' % (component, 'excluding' if excluded else 'including', 'with' if sin else 'without'))
+excluded = True # whether to exclude clouds near 180deg
+sin = True 	# set to False to fit WARP, plot WARP corner, and plot warp 3D model
+			# set to True to fit SIN component, plot SIN corner, and plot 3D corrugation after subtracting warp
+radwave = True
+radnum = 0
+ringwave = False
+print('Running with %i component(s) and %s l in [195, 200] and in %s component' % (component, 'excluding' if excluded else 'including', 'corrugation' if sin else 'warp'))
 
 if component == 1: path = 'oneComp'
 elif component ==2: path = 'twoComp'
-else: pass
+else: raise ValueError('No such component')
 if excluded: path += 'Exc'
+
 os.makedirs(path, exist_ok=True)
 
 #cat = 'residual.razm'
@@ -41,16 +51,97 @@ params[r'$\phi_{w1}$'] = (-0.7049789, 'free' if not sin else 'fixed', [-90, 90])
 params[r'$a_2$'] = (0.0, 'free' if (component==2) & (not sin) else 'fixed', [-0.50, 0.50])	#a_2 in kpc  -0.21
 params[r'$R_{w2}$'] = (12.7166892, 'free' if (component==2) & (not sin) else 'fixed', [10, 17])		#R_w2 in kpc
 params[r'$b_{w2}$'] = (2.03007431, 'free' if (component==2) & (not sin) else 'fixed', [0.1, 2.5])	#b_w2 index
-params[r'$\phi_{w2}$'] = (-20.4479290, 'free' if (component==2) & (not sin) else 'fixed', [-90, 90])	#phi_w2 in deg
+params[r'$\phi_{w2}$'] = (7, 'free' if (component==2) & (not sin) else 'fixed', [-90, 90])	#phi_w2 in deg
 
 ###sin component
-params[r'$a_3$'] = (0.0, 'free' if sin else 'fixed', [0, 0.50]) #a_3 in kpc
-params[r'$R_{c}$'] = (7.54, 'free' if sin else 'fixed', [6, 9])  #start of sin component in kpc
-params[r'$P_0$'] = (1.9, 'free' if sin else 'fixed', [1.1, 5.0])  #period of sin component in kpc
-params[r'$P_1$'] = (0.0, 'free' if sin else 'fixed', [-0.2, 0.3])  #period increasement of sin component in kpc
-params[r'$\phi_{sin}$'] = (33.5, 'fixed', [28, 50])  #phi center in deg
-params[r'$\phi_{sin,width}$'] = (4,'fixed', [1, 5]) #phi width in deg
-params[r'$a_4$'] = (0.00, 'free' if sin else 'fixed', [-0.2, 0.1])  #baseline
+if sin and radwave:
+	# Radial direction (Radcliffe wave form)
+	if radnum == 0:
+		#phi=31
+		params[r'$A_{rad}$'] = (0.23, 'free' if sin else 'fixed', [0.01, 0.5])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (11, 'free' if sin else 'fixed', [9, 15])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (3, 'free' if sin else 'fixed', [1, 9.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [3, 7.5]) # period in kpc
+		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
+		params[r'$A_{rad,0}$'] = (0.0, 'free' if sin else 'fixed', [-0.2, 0.5]) # phase
+		# Circumferential width
+		params[r'$\phi_{rad}$'] = (33.5, 'free', [30, 38])  #phi center in deg
+		params[r'$\sigma_{\phi_{rad}}$'] = (4, 'free', [1, 10]) #phi width in deg
+	elif radnum == 1:
+		#phi=-15
+		params[r'$A_{rad}$'] = (-0.2, 'free' if sin else 'fixed', [-0.5, -0.01])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (14, 'free' if sin else 'fixed', [8, 17])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed' if sin else 'fixed', [1, 9.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [3, 7.5]) # period in kpc
+		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
+		params[r'$A_{rad,0}$'] = (0.0, 'fixed' if sin else 'fixed', [-0.2, 0.5]) # phase
+		# Circumferential width
+		params[r'$\phi_{rad}$'] = (-18.0, 'free', [-40, -10])  #phi center in deg
+		params[r'$\sigma_{\phi_{rad}}$'] = (9.5, 'fixed', [1, 10]) #phi width in deg
+	elif radnum == 2:
+		#phi=62
+		params[r'$A_{rad}$'] = (-0.2, 'free' if sin else 'fixed', [-0.5, -0.01])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (11, 'free' if sin else 'fixed', [9.5, 12])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed' if sin else 'fixed', [1, 8.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [2, 7]) # period in kpc
+		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
+		params[r'$A_{rad,0}$'] = (0.0, 'fixed' if sin else 'fixed', [-0.2, 0.5]) # phase
+		# Circumferential width
+		params[r'$\phi_{rad}$'] = (65, 'free', [45, 85])  #phi center in deg
+		params[r'$\sigma_{\phi_{rad}}$'] = (9.5, 'fixed', [1, 10]) #phi width in deg
+	elif radnum == 3:
+		#phi=106, fail
+		params[r'$A_{rad}$'] = (-0.2, 'free' if sin else 'fixed', [-0.5, -0.01])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (10, 'free' if sin else 'fixed', [9.5, 12])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed' if sin else 'fixed', [1, 6.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [2, 5]) # period in kpc
+		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
+		params[r'$A_{rad,0}$'] = (0.0, 'fixed' if sin else 'fixed', [-0.2, 0.5]) # phase
+		# Circumferential width
+		params[r'$\phi_{rad}$'] = (100, 'free', [90, 110])  #phi center in deg
+		params[r'$\sigma_{\phi_{rad}}$'] = (9.5, 'fixed', [1, 11]) #phi width in deg
+	elif radnum == 4:
+		#phi=106, fail
+		params[r'$A_{rad}$'] = (0.2, 'free' if sin else 'fixed', [0.01, 0.6])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (12, 'free' if sin else 'fixed', [9.5, 15])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (2, 'fixed' if sin else 'fixed', [1, 6.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [1, 9]) # period in kpc
+		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
+		params[r'$A_{rad,0}$'] = (0.0, 'fixed' if sin else 'fixed', [-0.2, 0.5]) # phase
+		# Circumferential width
+		params[r'$\phi_{rad}$'] = (140, 'free', [130, 155])  #phi center in deg
+		params[r'$\sigma_{\phi_{rad}}$'] = (9.5, 'fixed', [1, 11]) #phi width in deg
+
+elif sin and ringwave:
+	# Circumferential direction
+	params[r'$A_{az}$'] = (0.2, 'free' if sin else 'fixed', [0.08, 0.5])	# amplitude in kpc
+	params[r'$\phi_{az}$'] = (20., 'free' if sin else 'fixed', [0, 40]) # period in kpc
+	params[r'$\sigma_{\phi_{az}}$'] = (100., 'fixed' if sin else 'fixed', [1, 200]) # period in kpc
+	params[r'$P_{az}$'] = (52., 'free' if sin else 'fixed', [40, 90]) # period in kpc
+	params[r'$lg\gamma_{az}$'] = (2.8, 'fixed' if sin else 'fixed', [1, 4]) # period in kpc
+	# Radial width
+	params[r'$R_{az}$'] = (12.7, 'free' if sin else 'fixed', [11, 15])  #start of sin component in kpc
+	params[r'$\sigma_{R_{az}}$'] = (0.8, 'free' if sin else 'fixed', [0.1, 2.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+
+else:
+	params[r'$a_3$'] = (0.3, 'free' if sin else 'fixed', [0, 0.50]) #a_3 in kpc
+	params[r'$R_{c}$'] = (7.54, 'free' if sin else 'fixed', [6, 9])  #start of sin component in kpc
+	params[r'$P_0$'] = (1.9, 'free' if sin else 'fixed', [1.01, 5.0])  #period of sin component in kpc
+	params[r'$P_1$'] = (0.2, 'free' if sin else 'fixed', [-0.2, 0.3])  #period increasement of sin component in kpc
+	# Radial linear baseline 
+	params[r'$a_{rad,0}$'] = (0.00, 'free' if sin else 'fixed', [-0.2, 0.2])  #baseline
+	# Circumferential width
+	params[r'$\phi_{circ}$'] = (33.5, 'fixed', [30, 38])  #phi center in deg
+	params[r'$\sigma_{circ}$'] = (4, 'fixed', [1, 10]) #phi width in deg
+
+
+#params[r'$\phi_{circ}$'] = (36.5, 'fixed', [28, 50])  #phi center in deg
+#params[r'$\phi_{circ,width}$'] = (6, 'fixed', [1, 10]) #phi width in deg
 
 #[1.39573585e-01, 7.74237334, 2.86256551, 1.57132833e-01,3.21995180e+01, 9.11163275, 1.06050455e-02]
 #params[r'$a_5$'] = (0.0102, 'free', [0.001, 6])		#period of sin component in kpc
@@ -60,8 +151,8 @@ params[r'$a_4$'] = (0.00, 'free' if sin else 'fixed', [-0.2, 0.1])  #baseline
 ###MCMC setting  [ -0.08204349   0.10188      7.77984319 -10.99553919  -0.11923537 13.79306634 -23.78646842]
 
 nwalkers = 32 	#how many thread
-burnin = 1000 	#number of iteration to reach local minimum (usually 20~30% of niter)
-niter = 3000	#number of iteration
+burnin = 1500 	#number of iteration to reach local minimum (usually 20~30% of niter)
+niter = 3000#5000	#number of iteration
 
 '''
 one component: fix a0=0, free (a1, Rw1, bw1, phiw1)
@@ -103,10 +194,34 @@ def fp2p(free_params):
 	return p
 
 
+def radcliffe_wave(d, A, delta, P, dmaxXgamma, phi, a4):
+	'''
+	Exact Radcliffe wave form from the paper:
+	Δz(d) = A × exp[-δ×(d/kpc)²] × sin[(2πd/P) × (1 + d/(d_max×γ)) + φ]
+	
+	Parameters:
+	d: distance from start point (kpc)
+	A: amplitude
+	delta: amplitude decay rate  
+	P: period (kpc)
+	gamma: period decay rate
+	phi: phase
+	d_max: maximum distance (kpc)
+	'''
+	wav = (A * np.sin((2 * np.pi * d / P) * (1 + d / dmaxXgamma *0) + phi) + a4)
+	#amp = np.exp(-d**2/2/delta**2)
+	amp = np.exp(-d/delta)
+	return amp*wav
+
+
 def function(x, free_params, warp=not sin, sin=sin):
-	a0, a1, Rw1, bw1, PHIw1, a2, Rw2, bw2, PHIw2, a3, Rsin, Period0, Period1, PHIsin, PHIsinwid, a4 = fp2p(free_params)
-	#a0, a1, Rw1, bw1, PHIw1, a2, bw2, PHIw2, a3, Rsin, Period0, Period1, PHIsin, PHIsinwid, a4 = fp2p(free_params)
-	#a0, a1, Rw, b, fR, Rs, fPHI, PHIs = fp2p(free_params)
+	if sin and radwave:
+		a0, a1, Rw1, bw1, PHIw1, a2, Rw2, bw2, PHIw2, Arad, Rrad, sigmaRrad, Period0, Period1, phase, Arad0, PHIrad, sigmaPHIrad = fp2p(free_params)
+	elif sin and ringwave:
+		a0, a1, Rw1, bw1, PHIw1, a2, Rw2, bw2, PHIw2, Acirc, PHIcirc, sigmaPHIcirc, Period0, Period1, Rcirc, sigmaRcirc = fp2p(free_params)
+	else:
+		a0, a1, Rw1, bw1, PHIw1, a2, Rw2, bw2, PHIw2, Arad, Rrad, Period0, Period1, Arad0, PHIcirc, sigmaPHIcirc = fp2p(free_params)
+
 	R, PHI = x
 	
 	#y = np.zeros(R.size)
@@ -121,11 +236,32 @@ def function(x, free_params, warp=not sin, sin=sin):
 		y[index] += a2 * (R[index]-Rw2)**bw2 * np.sin(2*(PHI[index]-PHIw2)/180*np.pi)
 
 	if sin:
-		###sin component
-		index = R>Rsin
-		y[index] += ( a4*(R[index] - Rsin) + a3*np.sin( (R[index] - Rsin) / (Period0 + Period1*(R[index]-Rsin)) * 2*np.pi ) ) * np.exp(-(PHI[index]-PHIsin)**2/ 2 / PHIsinwid**2)
+		if radwave:
+			# radial
+			Zrad = radcliffe_wave((R-Rrad), Arad, sigmaRrad, Period0, Period1, phase, Arad0)
+			# circumferential
+			Zaz = np.exp(-(PHI-PHIrad)**2/ 2 / sigmaPHIrad**2)
+			y += Zrad * Zaz
+
+		elif ringwave:
+			Zrad = Acirc * np.sin(2 * np.pi * (PHI-PHIcirc) / Period0 * (1 + (PHI-PHIcirc)/10**Period1 *0))# * np.exp(-(PHI-PHIcirc)**2/2/sigmaPHIcirc**2)
+			Zaz = np.exp(-(R-Rcirc)**2/ 2 / sigmaRcirc**2)
+			y += Zrad * Zaz
+
+		else:
+			###sin component
+			index = R>Rw1#Rrad
+			###y[index] += ( a4*(R[index] - Rrad) + Arad*np.sin( (R[index] - Rrad) / (Period0 + Period1*(R[index]-Rrad)) * 2*np.pi ) ) * np.exp(-(PHI[index]-PHIcirc)**2/ 2 / PHIcircwid**2)
+			# radial linear
+			Zlin = Arad0 * (R[index] - Rrad)
+			# radial sinusoidal
+			Zsin = Arad * np.sin( (R[index] - Rrad) / (Period0 + Period1*(R[index]-Rrad)) * 2*np.pi )
+			# circumferential width
+			Zaz = np.exp(-(PHI[index]-PHIcirc)**2/ 2 / sigmaPHIcirc**2)
+			y[index] += (Zlin+Zsin) * Zaz
 
 	return y
+
 
 def lnlike(free_params, data):
 	#likelihood, or probability
@@ -157,12 +293,16 @@ def main(*data, initial=initial, nwalkers=nwalkers, burnin=burnin, niter=niter, 
 
 	#mcmc sampler
 	sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=data, \
-		moves=emcee.moves.StretchMove(0.5))
+		moves=emcee.moves.StretchMove(0.2))
 	
 	print("Initial = ", initial)
+
 	print("Running burn-in...")
 	p0, _, _ = sampler.run_mcmc(p0, burnin)
-	print("After burn-in:\n", p0)
+
+	print("After burn-in:\n")
+	for p in p0: print(' '.join(['%+.3f' % v for v in p]))
+
 	sampler.reset()
 
 	print("Running production...")
@@ -174,7 +314,6 @@ def main(*data, initial=initial, nwalkers=nwalkers, burnin=burnin, niter=niter, 
 def _excludedXYZ(x, y, z):
 	### remove excluded surface
 	r, phi = XY2RPHI(x, y)
-	from warp_out_b import gc2g
 	l, b, d = gc2g(r, phi, z)
 	idx = (l>165) & (l<199) & (x**2+y**2>16**2)
 	x[idx] = np.nan
@@ -183,33 +322,121 @@ def _excludedXYZ(x, y, z):
 	return x, y, z
 
 
-def convolveZ(x, y, z, w, kernelsize, sampleX, sampleY):
-	# get average z at (sampleX, sampleY) by convolving points (x,y,z,w) along z direction
-	distance2 = ((sampleX[...,np.newaxis] - x)**2 + (sampleY[...,np.newaxis] - y)**2)
-	sigma2 = kernelsize**2 / (8*np.log(2))
-	kernelweight = np.exp(- distance2 / 2 / sigma2)
 
-	kernelweight[distance2>kernelsize**2*4] = 0
-	#w=1
-	sampleZ = np.sum(z * w * kernelweight, axis=-1) / np.sum(w * kernelweight, axis=-1)
+def convolveZ(x, y, z, w, sampleX, sampleY, kernel=1, useMask=True, generateMask=False):
+	### sample and convolve on xy points
+	### generate a high resolution mask for edge (generateMask=True)
+	### apply mask (useMask=True)
+	sigma = kernel/np.sqrt(8*np.log(2))
+	clipRadius = 4*sigma
+	tree = cKDTree(np.column_stack((x, y)))
+	samplePoints = np.column_stack((sampleX.ravel(), sampleY.ravel()))  # flatten grid
+	neighbors = tree.query_ball_point(samplePoints, r=clipRadius)
 
-	### remove excluded l range
-	sampleR, samplePHI = XY2RPHI(sampleX, sampleY)
-	from warp_out_b import gc2g
-	l, b, d = gc2g(sampleR, samplePHI, sampleZ)
+	### sample x,y
+	sampleZ = np.full(sampleX.size, np.nan)
+	for j, idxs in enumerate(neighbors):
+		if len(idxs) == 0:
+			continue
+		dx = samplePoints[j,0] - x[idxs]
+		dy = samplePoints[j,1] - y[idxs]
+		d2 = dx**2 + dy**2
+		kw = np.exp(-d2 / (2 * sigma**2))
+		w_eff = w[idxs] * kw
+		denom = np.sum(w_eff)
+		if denom > 0:
+			sampleZ[j] = np.sum(z[idxs] * w_eff) / denom
 
-	idx = ( (l>165) & (l<199) & (sampleR>16) ) | ( (l>165) & (l<195) )
-	sampleZ[idx] = np.nan
 
+	### generate edge mask on high-resolution grid
+	if useMask:
+		fineStep = 0.1 # in kpc
+
+		### finer grid
+		axisX = np.arange(-10, 18, fineStep)
+		axisY = np.arange(-15, 24, fineStep)
+
+		if generateMask:
+			# mesh grid
+			gridX, gridY = np.meshgrid(axisX, axisY)
+			# Flatten grid for KDTree query
+			gridPoints = np.column_stack((gridX.ravel(), gridY.ravel()))
+
+			# Build KDTree of data points
+			tree = cKDTree(np.column_stack((x, y)))
+			kernelRadius = kernel/2 # in kpc
+
+			# Count neighbors within kernel
+			neighbors = tree.query_ball_point(gridPoints, r=kernelRadius)
+			numDen = np.array([len(idx) for idx in neighbors])
+
+			# Reshape to grid
+			numDen = numDen.reshape(gridX.shape)
+
+			# >5 clouds in kernel
+			mask = gaussian_filter(numDen, sigma=1/fineStep) >=5
+
+			# mask 8 kpc ring
+			smoothZero = gaussian_filter((numDen>0).astype(float), sigma=1/fineStep)
+			mask[smoothZero<0.5] = False
+
+			# mask l and Rgal range
+			tol=3 #deg
+			gridR, gridPHI = XY2RPHI(gridX, gridY)
+			gridL, gridB, gridD = gc2g(gridR, gridPHI, np.zeros(gridR.shape))
+			mask[(gridL<15-tol) | (gridL>229.75+tol)] = False # cloud range
+			mask[(gridL>165+tol) & (gridL<195-tol)] = False # Kdist range
+			mask[(gridL>165+tol) & (gridL<199-tol) & (gridR>16+0.2)] = False
+			mask[gridR > 17] = False # Rgal range
+
+			np.save('highres_mask.npy', mask)
+		else:
+			mask = np.load('highres_mask.npy')
+
+		interp = RegularGridInterpolator((axisY, axisX), mask, method='linear', bounds_error=False, fill_value=0)
+		sampleMask = interp(samplePoints[:,::-1])>0.5 #xy order need reverse here
+		sampleZ[~sampleMask] = np.nan
+
+	sampleZ = sampleZ.reshape(sampleX.shape)
 	return sampleZ
 
 
+
+def convolveZonGrid(x, y, z, w, step=None, polar=True, **kws):
+	'''
+	convolveZ on regular grid
+	step: grid step for (dx, dy) or (dr, dphi)
+	polar: grid in xy or polar
+	'''
+	if polar:
+		if step is None: step=(.25, 2)	#
+		gridR, gridPHI = np.meshgrid(np.arange(1, 22.1, step[0]), np.arange(0, 360.1, step[1]))
+		gridX, gridY = RPHI2XY(gridR, gridPHI)
+	else:
+		if step is None: step=(.2, .2)
+		gridX, gridY = np.meshgrid(np.arange(-10, 18, step[0]), np.arange(-15, 24, step[1]))
+	
+	gridZ = convolveZ(x, y, z, w, gridX, gridY, **kws)
+	'''
+	if not residual:
+		gridZ = convolveZ(X, Y, Z, mass, gridX, gridY, **kws)
+	else:
+		gridZ = convolveZ(X, Y, Z-function((R, PHI), bestmed, warp=warp, sin=sin), mass, gridX, gridY, **kws)
+	'''
+	return gridX, gridY, gridZ
+
+
+
 def XY2RPHI(x, y):
+	x = np.asarray(x)
+	y = np.asarray(y)
 	r = np.sqrt(x**2 + y**2)
 	phi = np.arctan2(x, y)/np.pi*180
 	return r, phi
 
 def RPHI2XY(r, phi):
+	r = np.asarray(r)
+	phi = np.asarray(phi)
 	x = r*np.sin(phi/180*np.pi)
 	y = r*np.cos(phi/180*np.pi)
 	return x, y
@@ -247,7 +474,7 @@ if __name__ == '__main__':
 			#ind = (mas > 0) & ~((l > 160) & (l <= 165) | (l >= 195) & (l < 200))
 			#ind = (mas > 0) & ((l <= 160) | (l >= 200))
 			### exclude distant but massive clouds within 195~200
-			ind = (mas > 0) & ~((l>195) & (l<199) & (xx**2+yy**2>16**2))# & (mas>1e4))
+			ind = (mas > 0) & ~((l>195) & (l<199) & (xx**2+yy**2>16**2))# & (xx**2+yy**2<16**2)# & (mas>1e4))
 		else:
 			ind = (mas > 0)
 		print('Total:', ind.size, 'After excluding:', ind.sum())
@@ -273,6 +500,7 @@ if __name__ == '__main__':
 
 		### filter R range
 		if 0:
+			### warp model of annulus
 			i = 8
 			R_sep = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 			R1, R2 = R_sep[i:i+2]
@@ -286,24 +514,64 @@ if __name__ == '__main__':
 			suffix = '_%i_%i' % (R1, R2)
 		elif sin:
 			### sin component
-			suffix = '_sin'
+			if radwave:
+				suffix = '_radwave%i' % radnum
+			elif ringwave:
+				suffix = '_ringwave'
+			else:
+				suffix = '_sin'
 		else:
+			### warp model
 			suffix = ''
-
+			#suffix = '_le16kpc'
 
 		data = np.vstack([R, PHI, Z, mass])
 
 		### load residual data
 		if sin:
 			data = np.load('residual_%icomp.npy' % (component))
+			#data[3] = data[3] * data[0]**2
+
 			R, PHI, Z, mass = data
 			X, Y = RPHI2XY(R, PHI)
-
-			#plt.scatter(X, Y, c=Z, cmap='RdYlBu_r', vmin=-0.3, vmax=0.3)
-			#plt.show()
-
+			print(Z)
+			
 		print('Data in shape:', data.shape)
 	else:
+		### fit median
+		if sin:
+			suffix = '_fitmedian'
+			R, PHI, Z, mass = np.load('residual_%icomp.npy' % (component))
+			X, Y = RPHI2XY(R, PHI)
+			gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.2, 0.2), polar=False, useMask=True, generateMask=True)
+			gridR, gridPHI = XY2RPHI(gridX, gridY)
+			gridMass = np.ones_like(gridZ)
+			idx = np.isfinite(gridZ)
+			#plt.scatter(gridX[idx], gridY[idx], c=gridZ[idx], cmap='coolwarm', vmin=-0.3, vmax=0.3, s=10)
+			#plt.show()
+			data = np.vstack([gridR[idx], gridPHI[idx], gridZ[idx], gridMass[idx]])
+		'''
+		suffix = '_star'
+		from astropy.io import ascii
+		t = ascii.read("star/apjs.webarchive")
+		l = np.array(t['glon'])
+		b = np.array(t['glat'])
+		d = np.array(t['d-all'])/1e3
+		w = mass = 1/(np.array(t['e_d-all'])/1e3)**2
+		from shared import g2gc
+		X, Y, Z = g2gc(l, b, d, xyz=True)
+		R, PHI, Z = g2gc(l, b, d, xyz=False)
+		norm_mass = mass/np.sum(mass)
+
+		data = np.vstack([R, PHI, Z, mass])
+
+		if sin:
+			data = np.load('residual_%icomp%s.npy' % (component, suffix))
+			R, PHI, Z, mass = data
+			X, Y = RPHI2XY(R, PHI)
+		'''
+
+		'''
 		###simulate
 		ns = 1000
 		R = np.random.normal(9, 10, ns)
@@ -318,10 +586,10 @@ if __name__ == '__main__':
 		print(np.isnan(Z).sum())
 
 		data = np.vstack([R, PHI, Z, mass])
+		'''
 
-
-	if 1:
-		###run MCMC
+	###run MCMC
+	if 0:
 		sampler, pos, prob, state = main(data)
 		#samples = sampler.flatchain
 		steps = sampler.flatchain
@@ -334,17 +602,47 @@ if __name__ == '__main__':
 
 	### get median / best / best med
 	if 1:
+		def betterOutput(p):
+			i = 0
+			out = ['','']
+			for k in params:
+				if params[k][1] == 'free':
+					out[0] += '%15s' % k
+					out[1] += '%15.4f' % p[i]
+					i+=1
+			out[0]+='\n'
+			return out
 		med  = np.median(steps, axis=0)
 		best = steps[np.argmax(probs)]
-		bestmed = np.mean(steps[probs > np.percentile(probs, 95)], axis=0)
-		print('The best fitting result is: ', best)
-		print('The median fitting result is: ', med)
-		print('The median of the best is: ', bestmed)
+		bestmed = np.mean(steps[probs > np.percentile(probs, 98)], axis=0)
+		print('The best fitting result is:\n', *betterOutput(best))
+		print('The median fitting result is:\n', *betterOutput(med))
+		print('The median of the best is:\n', *betterOutput(bestmed))
 
+	'''
+	#bestmed=initial
+	fig, ax = plt.subplots()
+	idx = np.abs(PHI-bestmed[-2]) < 4
+	ax.scatter(R[idx], Z[idx], s=(mass[idx]*8e-3), c=PHI[idx], cmap='coolwarm', alpha=0.5)
 
+	Raxis = np.linspace(7, 22, 1000)
+	PHIaxis = np.full(1000, bestmed[-2])
+	mz = function((Raxis, PHIaxis), bestmed)
+	ax.plot(Raxis, mz, 'r--')
+
+	fig, ax = plt.subplots()
+	Xg, Yg = np.meshgrid(np.linspace(-20,20,300), np.linspace(-20,20,300))
+	Rg, PHIg = XY2RPHI(Xg, Yg)
+	mz = function((Rg, PHIg), bestmed)
+	ax.imshow(mz, extent=(-20,20,-20,20), origin='lower', cmap='coolwarm', vmin=-0.3, vmax=0.3)
+	from shared import rad_sep
+	for r in rad_sep: ax.plot([0,np.sin(np.deg2rad(r))*20],[0,np.cos(np.deg2rad(r))*20], 'k--', alpha=0.3)
+	for r in np.arange(2, 20, 2): ax.plot(*RPHI2XY(np.full(360,r), np.linspace(0,360,360)), 'k--', alpha=0.3)
+	#plt.show()
+	'''
 
 	### AIC / BIC
-	if 1:
+	if 0:
 		# Number of data points and free parameters
 		n = len(data[0])  # number of data points
 		k = len(best)     # number of free parameters
@@ -359,180 +657,227 @@ if __name__ == '__main__':
 
 		print('AIC for the best-fitting model:', aic)
 		print('BIC for the best-fitting model:', bic)
-		aicbic(data, bestmed)
-
+		#aicbic(data, bestmed)
 
 
 	### corner plot
-	if 1:
-		from shared import *
+	if 0:
+		from shared import textwidth, subfigureIndexFont
 		figscale = 0.6 if not sin else 0.45
 		figwidth = textwidth*figscale
-		def corners(steps, probs, bins=10, labels=[None]*ndim, point=best, top=90):
-			def lim(s):
-				ma = np.nanmax(s)
-				mi = np.nanmin(s)
+		plt.rcParams['savefig.dpi'] = 280
+		plt.rcParams['axes.linewidth'] = 0.8
+		plt.rcParams['axes.labelsize'] = 20
+		plt.rcParams['axes.labelweight'] = 'bold'
+		plt.rcParams['xtick.labelsize'] = 18
+		plt.rcParams['ytick.labelsize'] = 18
+		plt.rcParams['xtick.direction'] = 'in'
+		plt.rcParams['ytick.direction'] = 'in'
+		plt.rcParams['xtick.top'] = True
+		plt.rcParams['ytick.right'] = True
+		plt.rcParams['xtick.minor.visible'] = True
+		plt.rcParams['ytick.minor.visible'] = True
+		plt.rcParams['legend.fontsize'] = 15
+
+		def corners(steps, probs, bins=10, showtop=0.9, order=None,
+			figure_kws = dict(figsize=(figwidth, figwidth)),
+			hist_kws = dict(density=True, color = 'grey', histtype='step'),
+			values = None,
+			hist_value_kws = dict(pos='top', marker='v', color='tab:red'),
+			hist2d_value_kws = dict(marker='+', color='tab:red', markersize=8, markeredgewidth=2),
+			limits = [0.16, 0.84],
+			hist_limit_kws = dict(linestyle='--', color='k', linewidth=1, alpha=0.5),
+			labels = None,
+			hist_label_kws = dict(fontsize=20),
+			hist2d = True,
+			hist2d_kws = dict(cmap='Greys'), 
+			scatter = False,
+			scatter_kws = dict(s=0.2, cmap='RdYlBu', alpha=0.3),
+			contour = False,
+			contour_smooth_sigma = 0,
+			contour_kws = dict(colors='gray', levels=[0.2, 0.4, 0.6, 0.8], linewidths=1.5, alpha=0.8),
+			output = 'test.out',
+			):
+
+			ndim = steps.shape[1]
+			### plot corners
+			def autoLimit(s):
+				### extend according to s range
+				ma, mi = np.nanmax(s), np.nanmin(s)
 				return mi-(ma-mi)*0.1, ma+(ma-mi)*0.1
-			steps = steps[np.argsort(probs)]
-			probs = np.sort(probs)
-			def scientificNotationTitle(v, l, u):
+			def scientificNotationTitle(v, l, u, digit=4):
+				### show value, lower, and upper uncertainty in scientific notation format
 				e = np.floor(np.log10(np.abs(v)))
-				if e == 1: return '$%+.2f_{%+.2f}^{%+.2f}$' % (v, l, u)
-				elif e == 0: return '$%+.3f_{%+.3f}^{%+.3f}$' % (v, l, u)
-				else: return '$%+.3f_{%+.3f}^{%+.3f}$ x$10^{%i}$' % (v/10**e, l/10**e, u/10**e, e)
-			fig, ax = plt.subplots(nrows=ndim, ncols=ndim, figsize=(figwidth, figwidth))
+				### dont convert xx.xx to x.xxx*10^1
+				if e == 1:
+					e = 0
+					mind = 2
+				else: mind = 3
+				vs = v/10**e
+				us = u/10**e
+				ls = l/10**e
+				### show more digit if any error is zero
+				for d in range(mind, 11):
+					ustr = f'%+.{d}f' % us
+					lstr = f'%+.{d}f' % ls
+					if float(ustr) != 0.0 and float(lstr) != 0.0: break
+					else: d = 10
+				vstr = f'%+.{d}f' % vs
+				ustr = f'%+.{d}f' % us
+				lstr = f'%+.{d}f' % ls
+				### print latex form
+				vlatex = f'%+.{d-int(e)}f' % (v)
+				ulatex = f'%+.{d-int(e)}f' % (u)
+				llatex = f'%+.{d-int(e)}f' % (l)
+				print('& %s & $^{%s}_{%s}$' % (vlatex, ulatex, llatex))
+				if e==0:
+					return '$%s_{%s}^{%s}$' % (vstr, lstr, ustr)
+				else:
+					return '$%s_{%s}^{%s}$ x$10^{%i}$' % (vstr, lstr, ustr, e)
+
+			### sort steps (or high prob steps might be put behind)
+			steps = steps[np.argsort(probs)]
+			probs = np.sort(probs)		
+			### only plot the top% steps, clip low prob steps.
+			topidx = probs > np.quantile(probs, showtop)
+
+			### get a square figure.
+			fig, ax = plt.subplots(nrows=ndim, ncols=ndim, **figure_kws)
 			plt.subplots_adjust(bottom=0.09, top=0.91, left=0.09, right=0.91, wspace=0.05, hspace=0.05)
-			### only plot the top% steps
-			idx = probs > np.percentile(probs, top)
+
+			### decide where to put marker in hist
+			valuePos = hist_value_kws.pop('pos', 'bartop')
+			contourLevels = np.array(contour_kws.pop('levels', [0.2, 0.4, 0.6, 0.8]))
+
+			### adjust order
+			if order is not None:
+				steps = steps[:, order]
+				if values is not None: values = [values[o] for o in order]
+				if labels is not None: labels = [labels[o] for o in order]
+
+			### output values and limits
+			f = open(output, 'w')
 			for i in range(ndim):
 				### hist at [i,i]
-				h,xe,_ = ax[i,i].hist(steps[:,i][idx], color='grey', bins=bins, density=True)
-				### title
-				lower = np.quantile(steps[:,i], 0.16)-point[i]
-				upper = np.quantile(steps[:,i], 0.84)-point[i]
-				ax[i,i].text(0, 1.02, '%s=%s' % (labels[i], scientificNotationTitle(point[i], lower, upper)), \
-					ha='left', va='bottom', fontsize=20, transform=ax[i,i].transAxes)
-				### marker
-				peak = float(h[np.argwhere(point[i]>xe)[-1]])
-				ax[i,i].plot([point[i],], peak*1.1, 'v', color='#e33a23')
-				ax[i,i].plot([point[i]+lower]*2, [0, peak], '--', color='k', lw=1, alpha=0.5)
-				ax[i,i].plot([point[i]+upper]*2, [0, peak], '--', color='k', lw=1, alpha=0.5)
+				h,xe,_ = ax[i,i].hist(steps[:,i][topidx], bins=bins, **hist_kws)
 
-				### hide some xticks and all yticks
+				### values
+				if values is not None:
+					if valuePos == 'bartop': 
+						upperY = h[np.searchsorted(xe, values[i], side='right')-1] * 1.1
+					elif valuePos == 'top':
+						upperY = np.max(h)
+				ax[i,i].plot(values[i], upperY, **hist_value_kws)
+
+				### limits
+				lim = np.quantile(steps[:,i], limits)
+				for v in lim:
+					ax[i,i].axvline(v, **hist_limit_kws)
+
+				### labels
+				if labels is not None:
+					text = '%s=%s' % (labels[i], scientificNotationTitle(values[i], min(lim)-values[i], max(lim)-values[i]))
+					ax[i,i].text(0, 1.02, text, transform=ax[i,i].transAxes, ha='left', va='bottom', **hist_label_kws)
+
+				### output
+				f.write('%s %f %f %f\n' % (labels[i], values[i], min(lim)-values[i], max(lim)-values[i]))
+
+				### hide x ticklabels except the bottom row
 				if i<ndim-1: ax[i,i].xaxis.set_ticklabels([])
+				### hide all y tickslables
 				ax[i,i].set_yticklabels([])
 
 				### ticks
+				ax[i,i].set_autoscale_on(False)
 				ax[i,i].minorticks_on()
-				ax[i,i].tick_params(top=True, left=False, right=False, direction='in', labelrotation=45, length=5)
-				ax[i,i].tick_params(which='minor', top=True, left=False, right=False, direction='in', length=2)
-				#ax[i,i].tick_params(labelrotation=45)
-				ax[i,i].set_xlim(lim(steps[:,i][idx]))
+				ax[i,i].tick_params(top=True, left=False, direction='in', labelrotation=45, length=5)
+				ax[i,i].tick_params(which='minor', top=True, left=False, direction='in', length=2)
+				ax[i,i].set_xlim(autoLimit(steps[:,i][topidx]))
 
 				### plot hist2d
 				for j in range(i):
-					### hist
-					h,xe,ye,_ = ax[i,j].hist2d(steps[:,j][idx], steps[:,i][idx], bins=bins, cmap='gray_r')
-					#ax[i,j].scatter(steps[:,j][idx], steps[:,i][idx], c=probs[idx], s=0.2, cmap='RdYlBu_r')
-					#x,y = (xe[1:]+xe[:-1])/2, (ye[1:]+ye[:-1])/2
-					#ax[i,j].contour(x, y, h.T, colors='gray',levels=[h.max()*0.5, h.max()*0.75])
-					#ax[i,j].scatter(steps[:,j], steps[:,i], c=probs, s=0.2)#, vmin=np.percentile(probs,0.8))
-					#ax[i,j].plot(best[j],best[i], 'gx')
-					### marker
-					ax[i,j].plot(point[j],point[i], '+', color='#e33a23', ms=8, mew=2)
+					h, xe, ye = np.histogram2d(steps[:,j][topidx], steps[:,i][topidx], bins=bins)
+					### hist2d
+					if hist2d:
+						ax[i,j].imshow(h.T, origin='lower', extent=[xe[0], xe[-1], ye[0], ye[-1]], aspect='auto', **hist2d_kws)
+					### scatter
+					if scatter:
+						ax[i,j].scatter(steps[:,j][topidx], steps[:,i][topidx], c=probs[topidx], **scatter_kws)
+					### contour
+					if contour:
+						if contour_smooth_sigma is not None:
+							h = gaussian_filter(h, sigma=contour_smooth_sigma)
+						xc = (xe[1:]+xe[:-1])/2
+						yc = (ye[1:]+ye[:-1])/2
+						ax[i,j].contour(xc, yc, h.T, levels=contourLevels*np.max(h), **contour_kws)
+
+					### values
+					ax[i,j].plot(values[j], values[i], **hist2d_value_kws)
 					
-					### hide some
+					### hide x ticklabels except the bottom row
 					if i<ndim-1: ax[i,j].xaxis.set_ticklabels([])
+					### hide y ticklabels except the left column
 					if j>0: ax[i,j].yaxis.set_ticklabels([])
 
 					### ticks
+					ax[i,i].set_autoscale_on(False)
 					ax[i,j].minorticks_on()
-					ax[i,j].set_yticks(ax[i,i].get_xticks())
+					ax[i,j].set_yticks(ax[i,i].get_xticks()) ### make sure ytick is the same as the [i,i] xtick
 					ax[i,j].tick_params(top=True, right=True, direction='in', labelrotation=45, length=5)
 					ax[i,j].tick_params(which='minor', top=True, right=True, direction='in', length=2)
-					ax[i,j].set_xlim(lim(steps[:,j][idx]))
-					ax[i,j].set_ylim(lim(steps[:,i][idx]))
+					ax[i,j].set_xlim(autoLimit(steps[:,j][topidx]))
+					ax[i,j].set_ylim(autoLimit(steps[:,i][topidx]))
+
 					### hide upper right
 					ax[j,i].axes.set_axis_off()
-
-			if 1:#sin:
+			f.close()
+			'''
+			if sin:
 				if component==1:
-					ax[0,0].text(-0.25, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+					if radwave:
+						ax[0,0].text(-0.25, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+					else:
+						ax[0,0].text(-0.25, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
 				else:
-					ax[0,0].text(-0.32, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+					if radwave:
+						ax[0,0].text(-0.32, 1, 'c', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+					else:
+						ax[0,0].text(-0.32, 1, 'd', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+			'''
+			return fig, ax
 
 		#plt.plot(probs, '.')
 		#plt.show()
-		corners(steps[2000:], probs[2000:], bins=31, labels=free_params_name, point=bestmed, top=40)
-		plt.savefig('fig/corner_%icomp%s.%s' % (component, '_sin' if sin else '', mpl.rcParams['savefig.format']), bbox_inches='tight')
-		plt.savefig('fig/corner_%icomp%s.png' % (component, '_sin' if sin else ''), bbox_inches='tight')
+		if sin:
+			if radwave:
+				if radnum==0: order = (0,3,4,1,2,5,6)
+				else: order = (0,2,1,3)#(0,3,1,2,4,5)
+			elif ringwave: order = (0,2,1,3,4)
+			else: order = None
+		else: order = None
+		fig, ax = corners(steps, probs, bins=31, labels=free_params_name, values=bestmed, showtop=0.5, order=order)
+		#avoid ticklabel overlap
+		if (component==1) and sin and radwave and (radnum==0):
+			for i in range(7): ax[i, 0].set_xlim(0.1973882544240669, 0.20249999)
+		elif (component==2) and sin and radwave and (radnum==0):
+			for i in range(7): ax[i, 1].set_xlim(4.4664515570296555, 4.537)
+			for i in range(7): ax[i, 2].set_xlim(0.0776, 0.0819999999)
+			for i in range(2): ax[2, i].set_ylim(0.07794477178721429, 0.08199999)
+		plt.savefig('fig/corner_%icomp%s.%s' % (component, suffix, plt.rcParams['savefig.format']), bbox_inches='tight')
+		plt.savefig('fig/corner_%icomp%s.png' % (component, suffix), bbox_inches='tight')
 		#corner.corner(steps, show_titles=True, plot_contours=False, plot_datapoints=True, quantiles=[0.16, 0.5, 0.84], range=None)#[(v-0.5,v+0.5) for v in best])
-		plt.show()
 
 
-
-	### export residual
+	### export residual, only normal warp
 	if not sin:
 		data[2] -= function(data[:2], bestmed, warp=True, sin=False)
-		print(data[:2], function(data[:2], bestmed, warp=True, sin=False))
-		np.save('residual_%icomp.npy' % component, data)
-		print('Export to residual_%icomp.npy' % component)
-
-
-	### plot face-on gplane
-	if 0:
-		def gplane(fig, ax, x, y, c, s, im=False, **kws):
-			if im:
-				h, xe, ye = np.histogram2d(x, y, bins=[np.arange(-10,18,0.6), np.arange(-15,24,0.6)], weights=c)
-				n, xe, ye = np.histogram2d(x, y, bins=[np.arange(-10,18,0.6), np.arange(-15,24,0.6)])
-				im = ax.imshow(h.T/n.T, origin='lower', extent=(xe[0], xe[-1], ye[0], ye[-1]), **kws)
-			else:
-				im = ax.scatter(x, y, c=c, s=s, **kws)
-			ax.set_aspect('equal')
-			ax.plot(0,0,'ko')
-			xlim = ax.get_xlim()
-			ylim = ax.get_ylim()
-			for ray in range(0, 360, 10):
-				ax.plot([0,np.sin(ray/180*np.pi)*30],[0,np.cos(ray/180*np.pi)*30], '--', color='gray', linewidth=1)
-			for rad in range(2, 30, 2):
-				ax.plot(rad*np.sin(np.linspace(0, 2*np.pi, 360)), rad*np.cos(np.linspace(0, 2*np.pi, 360)), '--', color='gray', linewidth=1)
-			fig.colorbar(im, ax=ax)
-			ax.set_xlim(xlim)
-			ax.set_ylim(ylim)
-
-		fig, ax = plt.subplots(ncols=2, nrows=2, sharex=True, sharey=True, figsize=(14, 9))
-		kws = dict(cmap='RdBu', vmin=-0.10, vmax=0.10)
-		gplane(fig, ax[0,0], X, Y, c=Z, s=mass/mass.max()*200, **kws)
-		gplane(fig, ax[0,1], X, Y, c=Z-function((R, PHI), best), s=mass/mass.max()*200, **kws)
-
-		kws = dict(cmap='RdBu', vmin=-0.010, vmax=0.010)
-		gplane(fig, ax[1,0], X, Y, c=Z, s=mass/mass.max()*200, im=True, **kws)
-		gplane(fig, ax[1,1], X, Y, c=Z-function((R, PHI), best), s=mass/mass.max()*200, im=True, **kws)
-
+		#print(data[:2], function(data[:2], bestmed, warp=True, sin=False))
+		np.save('residual_%icomp%s.npy' % (component, suffix), data)
+		print('Export to residual_%icomp%s.npy' % (component, suffix))
 
 
 	###prepare functions for 3D visualization
-	if True:
-		def _point(x, y, z):
-			xyz = np.vstack((x,y,z)).T
-			point = pv.PointSet(xyz)
-			return point
-
-		def _surface(gx, gy, gz, c=None):
-			surface = pv.StructuredGrid(gx, gy, gz)
-			return surface
-
-		def _hist2dData2Grid(step=0.5):
-			### 
-			bins = [np.arange(-10, 18, step), np.arange(-15, 24, step)]
-			gridZM, xe, ye = np.histogram2d(X, Y, bins=bins, weights=Z*weight)
-			gridM, xe, ye = np.histogram2d(X, Y, bins=bins, weights=weight)
-			gridX, gridY = np.meshgrid((xe[1:]+xe[:-1])/2, (ye[1:]+ye[:-1])/2)
-			gridM[gridM==0] = np.nan
-			gridZ = (gridZM / gridM).T
-			return gridX, gridY, gridZ
-
-		def _convolveData2Grid(step=None, polar=True, residual=False, **kws):
-			'''
-			step: grid step for (dx, dy) or (dr, dphi)
-			polar: grid in xy or polar
-			residual: return data or residual
-			'''
-			if polar:
-				if step is None: step=(.25, 2)	#
-				sampleR, samplePHI = np.meshgrid(np.arange(1, 22.1, step[0]), np.arange(0, 360.1, step[1]))
-				sampleX, sampleY = RPHI2XY(sampleR, samplePHI)
-			else:
-				if step is None: step=(.25, .25)
-				sampleX, sampleY = np.meshgrid(np.arange(-10, 18, step[0]), np.arange(-15, 24, step[1]))
-			
-			if not residual:
-				sampleZ = convolveZ(X, Y, Z, mass, 0.75, sampleX, sampleY)
-			else:
-				sampleZ = convolveZ(X, Y, Z-function((R, PHI), bestmed, **kws), mass, 0.75, sampleX, sampleY)
-
-			return sampleX, sampleY, sampleZ
-
+	if False:
 		def _modelGrid(step=(1,15), **kws):
 			gridR, gridPHI = np.meshgrid(np.arange(8, 22.1, step[0]), np.arange(0, 360.1, step[1]))
 			gridZ = function((gridR, gridPHI), bestmed, **kws)
@@ -565,8 +910,447 @@ if __name__ == '__main__':
 
 
 
-	### 3D visualization with plotly
-	if not sin:
+	### plot face-on gplane
+	if 0:
+		def gplane(fig, ax, im=None, step=0.25, kernel=1.2, residual=False, arm=True, grid=True, draw_phi=True, rotation_arrow=False, \
+			colorbar_kws={'rect':[0.28, 0.2, 0.02, 0.22], 'orientation':'vertical'}, **kws):
+
+			if im is None:
+				step = 0.25
+
+				# if sin==False, use convolveZonGrid(X, Y, Z-Z_w, mass, ....
+				from shared import function_warp, p_1comp, p_2comp, subfigureIndexFont, function_PoggioWarp
+				#Z_w = function_warp((R,PHI), p=p_1comp if component==1 else p_2comp)
+				#Z_w = function_PoggioWarp((R,PHI), cepheids=True, straight=True)
+
+				Z_sin = function((R, PHI), bestmed)
+
+				gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(step, step), polar=False, useMask=True, generateMask=False)
+				extent=(gridX[0,0]-step/2, gridX[0,-1]+step/2, gridY[0,0]-step/2, gridY[-1,0]+step/2)
+				im = ax.imshow(gridZ, origin='lower', extent=extent, **kws)
+				#ax.scatter(x, y, c='k', s=0.3, alpha=0.1)
+				#im = ax.scatter(x, y, c=z, s=w, **kws)
+			else:
+				im = ax.imshow(im, **kws)
+			ax.set_aspect('equal')
+			#ax.plot(0,0,'ko')
+
+
+			#spiral arms
+			def spiral(ax, brange, bk, Rk, phi_lt, phi_gt, width=0, **kws):
+				#brange=[180-230,180-12]
+				def_kws = dict(color='k', linewidth=2.5, linestyle='-', alpha=0.3)
+				def_kws.update(kws)
+				b=np.deg2rad(np.arange(*brange,0.3))
+				bk = np.deg2rad(bk)
+				phi = np.deg2rad([phi_lt if v<=bk else phi_gt for v in b])
+				for rk in [Rk,]:# Rk-width*1.1775, Rk+width*1.1775]:
+					R = rk*np.exp(-(b-bk)*np.tan(phi))
+					x=R*np.sin(b)
+					y=R*np.cos(b)
+					ax.plot(x, y, **def_kws)#'-' if rk==Rk else '--', 
+					#ax.plot(Rk*np.sin(bk), Rk*np.cos(bk),'+', **kws)
+				#from curvetext import CurvedText
+				#CurvedText(x,y,label,va='bottom', axes=ax, fontsize=font['SMALL'], color=kws['color'])
+			if arm:
+				###Parameters in Reid2019
+				#spiral(ax, [-150,190],15, 3.52, -4.2, -4.2, width=0.18, color='yellow')	#3kpc
+				#spiral(ax, [-60,54],  18, 4.46, -1.0, 19.5, width=0.14, color='red')	#Norma
+				#spiral(ax, [-330,81], 23, 4.91, 14.1, 12.1, width=0.23, color='green')	#Sct-Cen
+				#spiral(ax, [-150,230],24, 6.04, 17.1,  1.0, width=0.27, color='magenta')#Sgt-Car
+				#spiral(ax, [-30,34],   9, 8.26, 11.4, 11.4, width=0.31, color='cyan')	#local
+				#spiral(ax, [-30,255], 40, 8.87, 10.3,  8.7, width=0.35, color='green')	#Perseus
+				#spiral(ax, [-30,270], 18,12.24,  3.0,  9.4, width=0.65, color='green')	#Outer
+				###Parameters adjusted
+				#spiral(ax, [-140,18],15, 3.52, -4.2, -4.2, width=0.18, color='yellow')	#3kpc
+				#spiral(ax, [45,200],90, 3.3, 4.2, 4.2, width=0.18, color='yellow')	#3kpc
+				#spiral(ax, [-55,55],  18, 4.46, -0.5, 19.5, width=0.14, color='red')	#Norma
+				#spiral(ax, [-54,81], 23, 4.91, 14.1, 12.1, width=0.23, color='blue')	#Sct-Cen
+				#spiral(ax, [-340,-53],-54, 6.88, 10.0, 12.1, width=0.23, color='blue')
+				#spiral(ax, [-33,230], 24, 6.04, 16.2,  7.1, width=0.27, color='magenta')#Sgt-Car
+				#spiral(ax, [-170,-32],-33, 8.20, 9.9,  7.1, width=0.27, color='magenta')
+				#spiral(ax, [-30,34],   9, 8.26, 11.4, 11.4, width=0.31, color='cyan')	#local
+				#spiral(ax, [-30,255], 40, 8.87, 10.3, 13.0, width=0.35, color='black')	#Perseus
+				#spiral(ax, [-30,305], 18,12.24,  4.9, 11.6, width=0.65, color='red')	#Outer
+				###Parameters for Reid2019 figure1
+				#spiral(ax, [-140,18],15, 3.52, -4.2, -4.2, width=0.18, label='3kpc', color='yellow')	#3kpc
+				#spiral(ax, [45,200], 90,  3.3,  4.2,  4.2, width=0.18, color='yellow')	#3kpc
+				#spiral(ax, [-20,55], 18, 4.46, -0.5, 19.5, width=0.14, label='Norma', color='darkred')	#Norma
+				#spiral(ax, [-47,81], 23, 4.91, 14.1, 12.1, width=0.23, label='Scutum–Centaurus', color='darkblue')
+				#spiral(ax, [-342,-192],-54, 6.88, 10.0, 12.1, width=0.23, label='Outer–Scutum–Centaurus', color='blue', linestyle='--')
+				#spiral(ax, [-24,168],24, 6.04, 16.2,  7.1, width=0.27, label='Sagittarius', color='Purple')#Sgt-Car
+				#spiral(ax, [-19,34],  9, 8.26, 11.4, 11.4, width=0.31, label='Local', color='darkcyan')	#local
+				#spiral(ax, [-26,168],40, 8.87, 10.3, 13.0, width=0.35, label='Perseus', color='blue')	#Perseus
+				#spiral(ax, [-27,168],18,12.24,  4.9, 11.6, width=0.65, label='Outer', color='blue')	#Outer
+				### Parameters from Sun 2024
+				spiral(ax, [-27,168],30.0, 10.1,  9.8,  9.8, color='k', linewidth=2.0, linestyle='-', label='CO')	#Outer
+				spiral(ax, [-27,168],20.3, 13.3,  3.5, 11.1, color='k', linewidth=2.0, linestyle='-')	#Outer
+				spiral(ax, [-27,168],47.0, 16.2, 12.3, 12.3, color='k', linewidth=2.0, linestyle='-')	#OSC
+				### Reid 2019, brange clipped
+				#spiral(ax, [-330,81], 23, 4.91, 14.1, 12.1, linewidth=0.23, color='green')	#Sct-Cen-OSC
+				#spiral(ax, [-8,34], 9, 8.26, 11.4, 11.4, linewidth=0.23, color='green', label='Reid et al. 2019')	#Local
+				#spiral(ax, [-23,115], 40, 8.87, 10.3,  8.7, linewidth=0.35, color='green')	#Perseus
+				#spiral(ax, [-16, 71], 18,12.24,  3.0,  9.4, linewidth=0.65, color='green')	#Outer
+				spiral(ax, [-342,-192],-54, 6.88, 10.0, 12.1, color='k', linewidth=2.0, linestyle=(0, (6,2)), label='HMSFRs') #OSC
+				spiral(ax, [-19,34],     9, 8.26, 11.4, 11.4, color='k', linewidth=2.0, linestyle=(0, (6,2)))	#local
+				spiral(ax, [-26,168],   40, 8.87, 10.3, 13.0, color='k', linewidth=2.0, linestyle=(0, (6,2)))	#Perseus
+				spiral(ax, [-27,168],   18,12.24,  4.9, 11.6, color='k', linewidth=2.0, linestyle=(0, (6,2)))	#Outer
+				### parameters from Drimmel 2025, or Poggio 2025
+				spiral(ax, [-90,60], 0.0, np.exp(2.48), 20.2, 20.2, color='k', linewidth=3.0, linestyle=(0, (1, 1)), label='Classical Cepheids')	#Per (Drimmel et al. 2025)
+				spiral(ax, [-90,60], 0.0, np.exp(2.21), 18.6, 18.6, color='k', linewidth=3.0, linestyle=(0, (1, 1)))	#Local
+				ax.legend(loc=[0.03, 0.012], handletextpad=0.2, frameon=False, borderpad=0.2, labelspacing=0.5, fontsize=20)
+
+			ax.set_autoscale_on(False)
+			ax.set_xlim(-9, 16.5)
+			ax.set_ylim(-15, 20)
+			
+			#Sun
+			ax.plot(0, 8.15, color='k', marker='o', markerfacecolor='none', markersize=14, zorder=200)
+			ax.plot(0, 8.15, color='k', marker='o', markersize=4, zorder=200)
+			ax.text(0, 7.8, 'Sun', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
+			#GC
+			#ax.plot(0, 0, color='k', marker='*', markerfacecolor='k', markersize=18, zorder=200)
+			#ax.text(0, -0.4, 'GC', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
+			
+
+			from matplotlib.patches import Ellipse
+			ax.add_patch(Ellipse((0, 0), 1.5*2, 4.5*2, angle=-30.5, edgecolor='none', facecolor='gray', alpha=0.4))
+
+			#grid
+			if draw_phi:
+				# draw dissigned phi
+				from shared import rad_sep
+				phi_sep = rad_sep
+			else:
+				# draw 10 deg separated phi
+				phi_sep = range(0, 360, 10)
+			if grid:
+				for ray in phi_sep:
+					ax.plot([0,np.sin(ray/180*np.pi)*30],[0,np.cos(ray/180*np.pi)*30], '--', color='gray', linewidth=1, alpha=0.3)
+				for rad in range(2, 30, 2):
+					ax.plot(rad*np.sin(np.linspace(0, 2*np.pi, 360)), rad*np.cos(np.linspace(0, 2*np.pi, 360)), '--', color='gray', linewidth=1, alpha=0.3)
+
+			# rotation direction arrow
+			if rotation_arrow:
+				ax.plot(*RPHI2XY(np.full(100, 19.5), np.linspace(25, 50, 100)), 'k-', linewidth=1.5)
+				ax.plot(*RPHI2XY([19.5, 19.9], [50, 47]), 'k-', linewidth=1.5)
+
+			#colorbar
+			#fig.colorbar(im, ax=ax, orientation='horizontal')
+			ax.set_xlabel('X (kpc)')
+			ax.set_ylabel('Y (kpc)')
+
+			'''
+			axins = inset_axes(ax,
+				   width="4%",  # width = 10% of parent_bbox width
+				   height="35%",  # height : 40%
+				   loc='lower left',
+				   bbox_to_anchor=(0.1, 0.1, 1, 1),
+				   bbox_transform=ax.transAxes,
+				   borderpad=0,
+				   )
+			'''
+			if im:
+				vis = colorbar_kws.pop('visible', True)
+				if vis:
+					ori = colorbar_kws.pop('orientation', 'vertical')
+					cax = fig.add_axes(**colorbar_kws)
+					cbar = fig.colorbar(im, cax=cax, orientation=ori)
+					if ori=='vertical':
+						cbar.ax.set_ylabel('$\Delta$Z (kpc)', fontsize=15, labelpad=0)
+						cax.tick_params(axis='y', which='major', labelsize=15)
+					else:
+						cbar.ax.set_xlabel('$\Delta$Z (kpc)', fontsize=15)
+						cax.tick_params(axis='x', which='major', labelsize=15)
+			#cbar.ax.set_ylabel('Z') # 可选：为colorbar添加标签
+		
+
+		plt.rcParams['savefig.dpi'] = 280
+		plt.rcParams['axes.linewidth'] = 0.8
+		plt.rcParams['axes.labelsize'] = 20
+		plt.rcParams['axes.labelweight'] = 'bold'
+		plt.rcParams['xtick.labelsize'] = 18
+		plt.rcParams['ytick.labelsize'] = 18
+		plt.rcParams['xtick.direction'] = 'in'
+		plt.rcParams['ytick.direction'] = 'in'
+		plt.rcParams['xtick.top'] = True
+		plt.rcParams['ytick.right'] = True
+		plt.rcParams['xtick.minor.visible'] = True
+		plt.rcParams['ytick.minor.visible'] = True
+		plt.rcParams['legend.fontsize'] = 15
+		if 1:
+			figscale = 0.53
+			figwidth = textwidth*figscale
+			fontscale = 1.3
+			# single plot without arm
+			from shared import function_PoggioWarp
+
+			fig, ax = plt.subplots(ncols=1, nrows=1, sharex=True, sharey=True, figsize=(figwidth, figwidth*1.33))
+			plt.subplots_adjust(left=0.11, right=0.97, top=0.95, wspace=0.1, hspace=0.1)
+			from shared import function_warp, p_1comp, p_2comp, subfigureIndexFont, p_circ1comp
+			#Z_w = function_warp((R,PHI), p=p_1comp if component==1 else p_2comp)
+			#Z -= function_warp((R,PHI), p=[0,0,0,0,0], circ=p_circ1comp)
+
+			kws = dict(cmap='coolwarm', vmin=-0.3, vmax=0.3, colorbar_kws={'rect':[0.2, 0.14, 0.025, 0.22], 'orientation':'vertical'})
+			gplane(fig, ax, im=None, arm=False, grid=True, rotation_arrow=True, **kws)
+
+			#ring slice
+			kws = dict(color='k', linewidth=1, linestyle='-')
+			r = 12.7
+			phi = np.linspace(-43, -21, 100)
+			ax.plot(*RPHI2XY(r, phi), **kws)
+			#ax.text(*RPHI2XY(11.8, -33), '12.5 kpc', rotation=33, ha='center', va='center', fontsize=14, fontweight='bold',color='red')
+			ax.text(*RPHI2XY(r-0.7, -38), '%.1f' % r, rotation=38, ha='center', va='center', fontsize=20, fontweight='bold')
+			ax.text(*RPHI2XY(r-0.7, -27), 'kpc', rotation=27, ha='center', va='center', fontsize=20, fontweight='bold')
+
+			# phi names
+			from shared import rad_sep
+			theta_sep = rad_sep
+			sep = -1
+			labelR = [15.1]*8+[16.1, 17.2]+[18.3]*5
+			for i in range(len(theta_sep)-2):
+				### skip 11 ~ -11
+				if i == 13: sep += 2
+				else: sep += 1
+				theta1, theta2 = theta_sep[sep:sep+2]
+				theta = (theta1+theta2)/2
+				ax.text(*RPHI2XY(labelR[i], theta), r'$\mathbf{\phi_{%i}}$' % (i+1), ha='center', va='center', rotation=0, fontsize=20, fontweight='bold')
+
+			# subfigure index
+			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
+			fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'png'), bbox_inches='tight')
+			fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'pdf'), bbox_inches='tight')
+		elif 0:
+			figscale = 0.39 if component==1 else 0.63
+			figwidth = textwidth*figscale
+			fontscale = 1.3
+			# single plot
+			from shared import function_PoggioWarp
+
+			fig, ax = plt.subplots(ncols=1, nrows=1, sharex=True, sharey=True, figsize=(figwidth, figwidth*1.33))
+			plt.subplots_adjust(left=0.11, right=0.97, top=0.95, wspace=0.1, hspace=0.1)
+			from shared import function_warp, p_1comp, p_2comp, subfigureIndexFont, p_circ1comp
+			#Z_w = function_warp((R,PHI), p=p_1comp if component==1 else p_2comp)
+			#Z -= function_warp((R,PHI), p=[0,0,0,0,0], circ=p_circ1comp)
+			#Z += Z_w
+			#Z_w = function_PoggioWarp((R,PHI))
+			#Z -= Z_w
+			kws = dict(cmap='coolwarm', vmin=-0.3, vmax=0.3, colorbar_kws={'rect':[0.18, 0.27, 0.025, 0.22], 'orientation':'vertical'})
+			gplane(fig, ax, im=None, arm=True, grid=False, **kws)
+
+			from matplotlib.patches import FancyArrowPatch
+			ax.add_patch(FancyArrowPatch(RPHI2XY(15, 38), RPHI2XY(13.8, 38), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+			ax.add_patch(FancyArrowPatch(RPHI2XY(16, 4), RPHI2XY(14.8, 4), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+			ax.add_patch(FancyArrowPatch(RPHI2XY(15, -20), RPHI2XY(13.8, -20), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+
+			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
+			fig.savefig('fig/dZ_plane_%1icomp_arm.%s' % (component, 'png'), bbox_inches='tight')
+			fig.savefig('fig/dZ_plane_%1icomp_arm.%s' % (component, 'pdf'), bbox_inches='tight')
+		elif 0:
+			figscale = 0.53
+			figwidth = textwidth*figscale
+			fontscale = 1.3
+			# single plot without arm
+			from shared import function_PoggioWarp
+
+			fig, ax = plt.subplots(ncols=1, nrows=1, sharex=True, sharey=True, figsize=(figwidth, figwidth*1.33))
+			plt.subplots_adjust(left=0.11, right=0.97, top=0.95, wspace=0.1, hspace=0.1)
+			from shared import function_warp, p_1comp, p_2comp, subfigureIndexFont, p_circ1comp
+			
+			kws = dict(cmap='coolwarm', vmin=-0.3, vmax=0.3, colorbar_kws={'rect':[0.2, 0.14, 0.025, 0.22], 'orientation':'vertical'})
+			gplane(fig, ax, im=None, arm=False, grid=True, rotation_arrow=True, **kws)
+
+			step = 0.05
+			#Z_w = function_warp((R, PHI), p=[0,0,0,0,0], circ=p_circ1comp)
+			#gridX, gridY, gridZ = convolveZonGrid(X, Y, Z_w, mass, step=(step, step), polar=False, useMask=True, generateMask=False)
+			#extent=(gridX[0,0]-step/2, gridX[0,-1]+step/2, gridY[0,0]-step/2, gridY[-1,0]+step/2)
+			#gplane(fig, ax, im=gridZ, arm=False, grid=True, extent=extent, origin='lower', rotation_arrow=True, **kws)
+			#ax.contour(gridX, gridY, gridZ, levels=[-0.1, 0.1], colors=['blue', 'red'], linestyles=':')
+
+			# phi names
+			from shared import rad_sep
+			theta_sep = rad_sep
+			sep = -1
+			labelR = [15.1]*8+[16.1, 17.2]+[18.3]*5
+			for i in range(len(theta_sep)-2):
+				### skip 11 ~ -11
+				if i == 13: sep += 2
+				else: sep += 1
+				theta1, theta2 = theta_sep[sep:sep+2]
+				theta = (theta1+theta2)/2
+				ax.text(*RPHI2XY(labelR[i], theta), r'$\mathbf{\phi_{%i}}$' % (i+1), ha='center', va='center', rotation=0, fontsize=20, fontweight='bold')
+
+			kws = dict(color='k', linewidth=4, linestyle=':', alpha=1)
+			r = 12.3
+			phi = np.linspace(-44, 52, 100)
+			ax.plot(*RPHI2XY(r, phi), **kws)
+			#ax.text(*RPHI2XY(11.8, -33), '12.5 kpc', rotation=33, ha='center', va='center', fontsize=14, fontweight='bold',color='red')
+			ax.text(*RPHI2XY(11.6, -38), '12.3', rotation=38, ha='center', va='center', fontsize=20, fontweight='bold')
+			ax.text(*RPHI2XY(11.6, -27), 'kpc', rotation=27, ha='center', va='center', fontsize=20, fontweight='bold')
+
+			from matplotlib.patches import FancyArrowPatch
+			ax.add_patch(FancyArrowPatch(RPHI2XY(15., 38), RPHI2XY(13.8, 38), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+			ax.add_patch(FancyArrowPatch(RPHI2XY(16., 4), RPHI2XY(14.8, 4), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+			ax.add_patch(FancyArrowPatch(RPHI2XY(15., -20), RPHI2XY(13.8, -20), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+
+			# subfigure index
+			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
+			fig.savefig('fig/dZ_plane_%1icomp_greatwave.%s' % (component, 'pdf'), bbox_inches='tight')
+			#fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'pdf'), bbox_inches='tight')
+		elif 0:
+			# compare
+			figscale = 0.53
+			figwidth = textwidth*figscale
+			fontscale = 1.3
+			fig, ax = plt.subplots(ncols=1, nrows=3, sharex=True, sharey=True, figsize=(figwidth, figwidth*1.1))# figwidth*0.91))
+			plt.subplots_adjust(left=0.09, right=0.88, bottom=0.08, top=0.95, wspace=0.04, hspace=0.02)
+
+			plt.rcParams['savefig.format'] = 'pdf'
+			plt.rcParams['savefig.dpi'] = 280
+			plt.rcParams['axes.linewidth'] = 0.8
+			plt.rcParams['axes.labelsize'] = 14
+			plt.rcParams['axes.labelweight'] = 'bold'
+			plt.rcParams['xtick.labelsize'] = 12
+			plt.rcParams['ytick.labelsize'] = 12
+			plt.rcParams['xtick.direction'] = 'in'
+			plt.rcParams['ytick.direction'] = 'in'
+			plt.rcParams['xtick.top'] = True
+			plt.rcParams['ytick.right'] = True
+			plt.rcParams['xtick.minor.visible'] = True
+			plt.rcParams['ytick.minor.visible'] = True
+			plt.rcParams['legend.fontsize'] = 12
+
+			kws = dict(cmap='coolwarm', vmin=-0.3, vmax=0.3)
+
+			from shared import function_warp, p_1comp, p_2comp, subfigureIndexFont, function_PoggioWarp
+
+			#ax[0].set_title('MWISP Clouds - CO warp model')
+			step = 0.25
+			gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(step, step), polar=False, useMask=True, generateMask=False)
+			extent=(gridX[0,0]-step/2, gridX[0,-1]+step/2, gridY[0,0]-step/2, gridY[-1,0]+step/2)
+			gplane(fig, ax[0], im = gridZ, extent=extent, origin='lower', arm=False, draw_phi=False, colorbar_kws={'rect':[0.20, 0.68, 0.015, 0.2]}, **kws)
+			ax[0].set_xlabel('')
+			ax[0].set_ylabel('')
+			#ax[0].plot(0, 8.15, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
+			#ax[0].plot(0, 8.15, color='k', marker='o', markersize=4, zorder=200)
+			#ax[0].text(0, 7.2,, 'Sun', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
+			ax[0].set_yticks(np.arange(0,20,5))
+
+			#ax[1].set_title('Young giants (Poggio et al. 2025)')
+			imgPoggio = np.load('PoggioFigure/Young_giants_fitstraightLON_DZ_residuals_fit.npy')
+			extent = [-15., 15., -15.+8.15, 15.+8.15]
+			gplane(fig, ax[1], im = imgPoggio, extent=extent, arm=False, draw_phi=False, colorbar_kws={'visible':False}, **kws)
+			ax[1].set_xlabel('')
+			ax[1].set_ylabel('')
+			#ax[1].tick_params(labelleft=False)
+			#ax[1].plot(8.15, 0, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
+			#ax[1].plot(8.15, 0, color='k', marker='o', markersize=4, zorder=200)
+			#ax[1].text(7.2, -0.6, 'Sun', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
+			ax[1].set_yticks(np.arange(0,20,5))
+
+			#ax[2].set_title('Cepheids (Poggio et al. 2025)')
+			imgPoggio = np.load('PoggioFigure/Cepheids_fitstraightLON_DZ_residuals_fit.npy')
+			extent = [-15., 15., -15.+8.15, 15.+8.15]
+			gplane(fig, ax[2], im = imgPoggio, extent=extent, arm=False, draw_phi=False, colorbar_kws={'visible':False}, **kws)
+			#ax[2].plot(8.15, 0, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
+			#ax[2].plot(8.15, 0, color='k', marker='o', markersize=4, zorder=200)
+			#ax[2].text(7.2, -0.6, 'Sun', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
+			ax[2].set_yticks(np.arange(0,20,5))
+			ax[2].set_xlabel('X (kpc)')
+			ax[2].set_ylabel('Y (kpc)')
+
+			
+			from matplotlib.patches import FancyArrowPatch
+			for a in ax.ravel():
+				a.add_patch(FancyArrowPatch(RPHI2XY(15., 38), RPHI2XY(13.8, 38), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+				a.add_patch(FancyArrowPatch(RPHI2XY(15.5, 4), RPHI2XY(14.3, 4), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+				a.add_patch(FancyArrowPatch(RPHI2XY(15., -20), RPHI2XY(13.8, -20), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))			
+			ax[0].set_xlim(-12, 12)
+			ax[0].set_ylim(4.5, 15.5)
+			#ax[2].set_ylabel('')
+			#ax[1].set_xlim(-15, 15)
+			#ax[1].set_ylim(-15+8.15, 19)
+			fig.savefig('fig/compare_dZ_plane_%1icomp2v.%s' % (component, 'pdf'), bbox_inches='tight')
+			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')			
+		else:
+			# compare
+			figscale = 0.53
+			figwidth = textwidth*figscale
+			fontscale = 1.3
+			fig, ax = plt.subplots(ncols=2, nrows=2, sharex=True, sharey=True, figsize=(figwidth, figwidth*1.0))# figwidth*0.91))
+			plt.subplots_adjust(left=0.09, right=0.88, bottom=0.08, top=0.95, wspace=0.04, hspace=0.02)
+
+			plt.rcParams['savefig.format'] = 'pdf'
+			plt.rcParams['savefig.dpi'] = 280
+			plt.rcParams['axes.linewidth'] = 0.8
+			plt.rcParams['axes.labelsize'] = 14
+			plt.rcParams['axes.labelweight'] = 'bold'
+			plt.rcParams['xtick.labelsize'] = 12
+			plt.rcParams['ytick.labelsize'] = 12
+			plt.rcParams['xtick.direction'] = 'in'
+			plt.rcParams['ytick.direction'] = 'in'
+			plt.rcParams['xtick.top'] = True
+			plt.rcParams['ytick.right'] = True
+			plt.rcParams['xtick.minor.visible'] = True
+			plt.rcParams['ytick.minor.visible'] = True
+			plt.rcParams['legend.fontsize'] = 12
+
+			kws = dict(cmap='coolwarm', vmin=-0.3, vmax=0.3)
+
+			from shared import function_warp, p_1comp, p_2comp, subfigureIndexFont, function_PoggioWarp
+
+			ax[0,0].set_title('MWISP Clouds - CO warp model')
+			step = 0.25
+			Z_w = function_warp((R,PHI), p=p_1comp if component==1 else p_2comp)
+			gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(step, step), polar=False, useMask=True, generateMask=False)
+			extent=(gridX[0,0]-step/2, gridX[0,-1]+step/2, gridY[0,0]-step/2, gridY[-1,0]+step/2)
+			gplane(fig, ax[0,0], im = gridZ, extent=extent, origin='lower', arm=True, draw_phi=False, colorbar_kws={'visible':False}, **kws)
+			ax[0,0].set_xlabel('')
+			ax[0,0].set_ylabel('')
+
+			ax[0,1].set_title('MWISP Clouds - Cepheids warp model')
+			Z_w = function_PoggioWarp((R,PHI), cepheids=True, straight=True)
+			gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(step, step), polar=False, useMask=True, generateMask=False)
+			extent=(gridX[0,0]-step/2, gridX[0,-1]+step/2, gridY[0,0]-step/2, gridY[-1,0]+step/2)
+			gplane(fig, ax[0,1], im = gridZ, extent=extent, origin='lower', arm=False, draw_phi=False, colorbar_kws={'visible':False}, **kws)
+			ax[0,1].set_xlabel('')
+			ax[0,1].set_ylabel('')
+			ax[0,1].tick_params(labelleft=False)
+
+			ax[1,0].set_title('Cepheids (Poggio et al. 2025)')
+			imgPoggio = np.load('PoggioFigure/Cepheids_fitstraightLON_DZ_residuals_fit.npy')
+			extent = [-15., 15., -15.+8.15, 15.+8.15]
+			gplane(fig, ax[1,0], im = imgPoggio, extent=extent, arm=False, draw_phi=False, colorbar_kws={'visible':False}, **kws)
+
+			ax[1,1].set_title('Young giants (Poggio et al. 2025)')
+			imgPoggio = np.load('PoggioFigure/Young_giants_fitstraightLON_DZ_residuals_fit.npy')
+			extent = [-15., 15., -15.+8.15, 15.+8.15]
+			gplane(fig, ax[1,1], im = imgPoggio, extent=extent, arm=False, draw_phi=False, colorbar_kws={'rect':[0.89, 0.138, 0.015, 0.304]}, **kws)
+			ax[1,1].set_xlabel('')
+			ax[1,1].set_ylabel('')
+			ax[1,1].tick_params(labelleft=False)
+
+
+			from matplotlib.patches import FancyArrowPatch
+			for a in ax.ravel():
+				a.add_patch(FancyArrowPatch(RPHI2XY(15.5, 38), RPHI2XY(13.8, 38), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+				a.add_patch(FancyArrowPatch(RPHI2XY(16.5, 4), RPHI2XY(14.8, 4), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+				a.add_patch(FancyArrowPatch(RPHI2XY(15.5, -20), RPHI2XY(13.8, -20), arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+			ax[1,1].set_xlim(-16, 15)
+			ax[0,0].set_ylim(-13, 18)
+			ax[0,1].set_ylim(5, 18)
+			#ax[1,0].set_ylim(-5, 18)
+			#ax[1,1].set_ylim(-5, 18)
+			#ax[2].set_ylabel('')
+			#ax[1].set_xlim(-15, 15)
+			#ax[1].set_ylim(-15+8.15, 19)
+			fig.savefig('fig/compare_dZ_plane_%1icomp.%s' % (component, 'pdf'), bbox_inches='tight')
+			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
+
+
+
+	### 3D visualization with plotly (finally adopted)
+	if 0 and not sin:
 		import plotly.graph_objs as go
 		figscale = 0.5
 		fontscale = 1.3
@@ -579,27 +1363,28 @@ if __name__ == '__main__':
 
 		
 		### median
-		gridX, gridY, gridZ = _convolveData2Grid(step=(0.75, 5), polar=True, warp=False, residual=False, sin=False)
+		gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.75, 5), polar=True, useMask=True, generateMask=False)
 		gridR, gridPHI = XY2RPHI(gridX, gridY)
 
 		#gridZ = gridZ - function((gridR, gridPHI), bestmed, warp1=True, sin=False)
-		#gridR, gridPHI, gridZ = _convolveData2Grid(step=(0.5, 0.5), polar=False)
+		#gridR, gridPHI, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.5, 0.5), polar=False)
 		points = go.Scatter3d(x=gridX.ravel(), y=gridY.ravel(), z=gridZ.ravel(), mode='markers', \
 			marker=dict(size=8, color=gridZ.ravel(), colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5, opacity=1.0, \
-			colorbar=dict(thickness=30, title=dict(text='Z (kpc)', font=dict(size=int(20*fontscale), weight='bold')), \
-				x=0.24, y=0.12, len=0.3, orientation='h', tickvals=np.arange(-0.5,1,0.25), tickfont=dict(size=int(18*fontscale)))))
+			colorbar=dict(thickness=30, title=dict(text='Z (kpc)', font=dict(size=int(30*fontscale), weight='bold')), \
+				x=0.2, y=0.08, len=0.3, orientation='h', tickvals=np.arange(-0.5,1,0.25), tickfont=dict(size=int(25*fontscale)))))
 
 
 		### wireframe
 		wires = []
 		line_marker = dict(color='#000000', width=5)#, colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5)
 		### R axis
-		for phi in list(range(323, 155, -12))+[155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]:
+		from shared import rad_sep
+		for phi in list(range(323, 155, -12))+rad_sep:
 			#for phi in np.arange(0, 360, 15):
 			lineR = np.arange(8.5, 20.6, 0.5)
 			linePHI = np.repeat(phi, lineR.size)
 			lineX, lineY = RPHI2XY(lineR, linePHI)
-			lineZ = function((lineR, linePHI), bestmed, warp=True, sin=True)
+			lineZ = function((lineR, linePHI), bestmed, warp=True, sin=False)
 			#line_marker['color'] = lineZ
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ, mode='lines', line=line_marker))
 
@@ -608,13 +1393,13 @@ if __name__ == '__main__':
 			linePHI = np.linspace(0, 360, int(360*r)//40)
 			lineR = np.repeat(r, linePHI.size)
 			lineX, lineY = RPHI2XY(lineR, linePHI)
-			lineZ = function((lineR, linePHI), bestmed, warp=True, sin=True)
+			lineZ = function((lineR, linePHI), bestmed, warp=True, sin=False)
 			#line_marker['color'] = lineZ
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ, mode='lines', line=line_marker))
 
 		### phi sector text
 		#sectorPosPhi = np.arange(165, -35, -15)-7.5
-		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip([155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, -11, -17], [143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -17, -27])])
+		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:])])
 		sectorPosR = np.repeat(22.5, len(sectorPosPhi))
 		sectorPosZ = function((sectorPosR, sectorPosPhi), bestmed)
 		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
@@ -623,7 +1408,7 @@ if __name__ == '__main__':
 		sectorPosZ[sectorPosZ>2.21] = 2.21
 		for i in range(len(sectorPosPhi)):
 			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$\huge \phi_{%i}$' % (i+1), showarrow=False, \
-				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=20)))
+				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=int(30*fontscale))))
 
 		### radius text
 		sectorPosR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5])])
@@ -633,17 +1418,17 @@ if __name__ == '__main__':
 		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
 		for i in [0, 8]:#range(len(sectorPosR)):
 			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$\huge R_{%i}$' % (i+1), showarrow=False, \
-				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=16)))
+				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=int(20*fontscale))))
 		
 		sun = go.Scatter3d(x=[0], y=[8.15], z=[0], mode='markers', \
 				marker=dict(color='#ff6600', size=6))
 		sunText = dict(x=0, y=8.15, z=0, text='Sun', showarrow=False,
-			xanchor='left', xshift=5, yanchor='bottom', font=dict(color='#ff6600', size=int(18*fontscale)))
+			xanchor='left', xshift=5, yanchor='bottom', font=dict(color='#ff6600', size=int(28*fontscale)))
 
 		gc = go.Scatter3d(x=[0], y=[0], z=[0], mode='markers', \
 			marker=dict(color='#555555', size=6))
 		gcText = dict(x=0, y=0, z=0, text='GC', showarrow=False,
-			xanchor='left', xshift=5, yanchor='bottom', font=dict(color='#666666', size=int(18*fontscale)))
+			xanchor='left', xshift=5, yanchor='bottom', font=dict(color='#666666', size=int(28*fontscale)))
 
 		eyeD = 1.6
 		eyeAz = -35
@@ -664,6 +1449,7 @@ if __name__ == '__main__':
 				_r.append(i+0.5)
 				_phi.append(bestmedi[-1])
 				_z.append(0)
+			print(_r, _phi)
 			_x, _y = RPHI2XY(np.array(_r), np.array(_phi))
 			_rphiw = go.Scatter3d(x=_x, y=_y, z=_z, mode='lines+markers',\
 				marker=dict(symbol='square', size=6, color='darkgreen', opacity=1), line=dict(color='darkgreen', width=12))
@@ -717,7 +1503,7 @@ if __name__ == '__main__':
 
 		# Create a Figure object and add the 3d objects to it
 		if component==1:
-			fig = go.Figure(data=[points, *wires, sun, gc, _rphiw, _phiw_1comp], layout=layout)#
+			fig = go.Figure(data=[points, *wires, sun, gc, _phiw_1comp], layout=layout)#_rphiw
 		else:
 			fig = go.Figure(data=[points, *wires, sun, gc], layout=layout)
 
@@ -732,7 +1518,7 @@ if __name__ == '__main__':
 		### panel ID
 		if component==1:
 			from shared import subfigureIndexFont
-			fig.add_annotation(x=0.05, xref='paper', y=0.95, yref='paper', text='a', showarrow=False, font=dict(color='black', family="Arial Black", size=int(35/figscale)))
+			#fig.add_annotation(x=0.05, xref='paper', y=0.95, yref='paper', text='a', showarrow=False, font=dict(color='black', family="Arial Black", size=int(35/figscale)))
 
 		### Show the plot
 		if 0: fig.show()
@@ -742,17 +1528,19 @@ if __name__ == '__main__':
 
 
 
-	### 3D visualization of residual with plotly
-	if sin:
+	### 3D visualization of residual with plotly (finally adopted)
+	if 0 and sin:
 		figscale = 0.62
 		fontscale = 1.3
 
+		from shared import *
 		import plotly.graph_objs as go
 		
 		
 		### residual
-		resX, resY, resZ = _convolveData2Grid(step=(0.25, 1), polar=True, residual=False)
-		resX, resY, resZ = _excludedXYZ(resX, resY, resZ)
+		resX, resY, resZ = convolveZonGrid(X, Y, Z, mass, step=(0.25, 1), polar=True)
+
+		##resX, resY, resZ = _excludedXYZ(resX, resY, resZ)
 		residual = go.Surface(x=resX, y=resY, z=resZ, surfacecolor=resZ, colorscale='RdYlBu_r', cmin=-0.2, cmax=0.2, opacity=1,
 			colorbar = dict(thickness=30, title=dict(text='ΔZ (kpc)',font=dict(size=int(60*figscale), weight='bold')), \
 				x=0.72, y=0.12, len=0.3, orientation='h', tickvals=np.arange(-0.2,0.5,0.1), tickfont=dict(size=int(54*figscale))))
@@ -766,11 +1554,12 @@ if __name__ == '__main__':
 		wires = []
 		line_marker = dict(color='#223322', width=5)
 		#for phi in np.arange(0, 360, 15):
-		for phi in list(range(323, 155, -12))+[155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]:
-			lineR = np.arange(8, 22.1, 0.25)
+		from shared import rad_sep
+		for phi in list(range(323, 155, -12))+rad_sep:
+			lineR = np.arange(0, 22.1, 0.25)
 			linePHI = np.repeat(phi, lineR.size)
 			lineX, lineY = RPHI2XY(lineR, linePHI)
-			lineZ = convolveZ(X, Y, Z, mass, 0.75, lineX, lineY)
+			lineZ = convolveZ(X, Y, Z, mass, lineX, lineY)
 			if phi in [29,38]: line_marker['width']=15
 			else: line_marker['width']=5
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ+0.01, mode='lines', line=line_marker))
@@ -780,21 +1569,22 @@ if __name__ == '__main__':
 			linePHI = np.arange(0, 360.1, 1)
 			lineR = np.repeat(r, linePHI.size)
 			lineX, lineY = RPHI2XY(lineR, linePHI)
-			lineZ = convolveZ(X, Y, Z, mass, 0.75, lineX, lineY)
+			lineZ = convolveZ(X, Y, Z, mass, lineX, lineY)
 			if r in [12,]: line_marker['width']=15
 			else: line_marker['width']=5
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ+0.01, mode='lines', line=line_marker))
 		
 		
 		#sectorPosPhi = np.arange(165, -35, -15)-7.5
-		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip([155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, -11, -17], [143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -17, -27])])
-		sectorPosR = np.linspace(20, 24, sectorPosPhi.size)
+		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:])])
+		#sectorPosR = np.linspace(20, 24, sectorPosPhi.size)
+		sectorPosR = np.linspace(17, 19, sectorPosPhi.size)
 		sectorPosZ = np.zeros(sectorPosPhi.size)
 		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
 		sectorText = []
 		for i in range(len(sectorPosPhi)):
-			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$\Huge \phi_{%i}$' % (i+1), showarrow=False, \
-				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#000000', size=14)))
+			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='ϕ'+to_subscript(i+1), showarrow=False, \
+				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#000000', size=int(40*fontscale))))#'$\Huge \phi_{%i}$' % (i+1),
 		
 
 		### bar ellipse
@@ -821,7 +1611,7 @@ if __name__ == '__main__':
 			xanchor='left', xshift=5, yanchor='bottom', font=dict(color='#666666', size=int(30*fontscale)))
 
 		### arrow
-		arrowR = 25
+		arrowR = 21
 		a = np.linspace(24.5, 53, 200) /180*np.pi
 		arrowX = np.concatenate( (arrowR * np.sin(a), [(arrowR+0.5) * np.sin(a[-20])]) )
 		arrowY = np.concatenate( (arrowR * np.cos(a), [(arrowR+0.5) * np.cos(a[-20])]) )
@@ -849,9 +1639,9 @@ if __name__ == '__main__':
 		layout = go.Layout(
 			scene=dict(
 				xaxis=dict(title = dict(text='', font=title_font), #X (kpc)
-					range=[-10.01, 25.01], tickvals=np.arange(-10,25.1,5), **tick_kws),
+					range=[-8.01, 20.01], tickvals=np.arange(-8,20.1,4), **tick_kws),
 				yaxis=dict(title=dict(text='', font=title_font), #Y (kpc)
-					range=[-20.01, 25.01], tickvals=np.arange(-20,25.1,5), **tick_kws),
+					range=[-16.01, 20.01], tickvals=np.arange(-16,20.1,4), **tick_kws),
 				zaxis=dict(title=dict(text='', font=title_font), #ΔZ (kpc)
 					range=[-1.01, 1.01], tickvals=np.arange(-0.5, 2, 0.5), zerolinecolor='#000000',zerolinewidth=5, **tick_kws),
 				annotations=[
@@ -879,9 +1669,9 @@ if __name__ == '__main__':
 		fig = go.Figure(data=[residual, *wires, bar, sun, gc, arrow], layout=layout)#
 
 		### panel ID
-		if component == 1:
-			fig.add_annotation(x=0.05, y=0.88, xref='paper', yref='paper', text='a', \
-				showarrow=False, font=dict(color='black', size=int(70), family="Arial Black"))
+		#if component == 1:
+		#	fig.add_annotation(x=0.05, y=0.88, xref='paper', yref='paper', text='a', \
+		#		showarrow=False, font=dict(color='black', size=int(70), family="Arial Black"))
 
 		### axis title
 		fig.add_annotation(x=0.08, y=0.35, textangle=73, text='X (kpc)', xref='paper', yref='paper', \
@@ -947,26 +1737,26 @@ if __name__ == '__main__':
 			### data + model
 
 			### DATA points
-			#p.add_points(_point(X, Y, Z), style='points_gaussian', scalars=np.log10(mass), cmap='gray', clim=[0,5], opacity=0.2, point_size=5, show_scalar_bar=False)
-			#p.add_points(_point(X, Y, Z), scalars=Z, style='points_gaussian', render_points_as_spheres=False, emissive=False, cmap='RdYlBu_r', clim=[-1,1], opacity=0.3, point_size=5, show_scalar_bar=False)
+			#p.add_points(pv.PointSet(np.column_stack(X, Y, Z)), style='points_gaussian', scalars=np.log10(mass), cmap='gray', clim=[0,5], opacity=0.2, point_size=5, show_scalar_bar=False)
+			#p.add_points(pv.PointSet(np.column_stack(X, Y, Z)), scalars=Z, style='points_gaussian', render_points_as_spheres=False, emissive=False, cmap='RdYlBu_r', clim=[-1,1], opacity=0.3, point_size=5, show_scalar_bar=False)
 
 			### DATA regrid surface
 			### use a small step for surface to make it smooth, eg. (0.25, 2)
 			### use a larger step for wireframe to make it clear to see, eg. (0.5, 4)
-			#gridX, gridY, gridZ = _convolveData2Grid(step=(0.75, 5), polar=True, warp=False, residual=False, sin=False)
+			#gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.75, 5), polar=True, warp=False, sin=False)
 			#gridX, gridY, gridZ = _dataConvolve(step=(0.5, 4), polar=True)
-			#p.add_mesh(_surface(gridX, gridY, gridZ), style='points_gaussian', color='k', clim=[-1,1], opacity=1.0, point_size=14, render_points_as_spheres=False)
+			#p.add_mesh(pv.StructuredGrid(gridX, gridY, gridZ), style='points_gaussian', color='k', clim=[-1,1], opacity=1.0, point_size=14, render_points_as_spheres=False)
 			
-			#p.add_points(_point(gridX.ravel(), gridY.ravel(), gridZ.ravel()), style='points_gaussian', scalars=gridZ.ravel(), cmap='RdYlBu_r', clim=[-1,1], opacity=1.0, point_size=3, render_points_as_spheres=False)
-			#p.add_mesh(_surface(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-1,1], opacity=0.9, point_size=5, show_scalar_bar=False)
+			#p.add_points(pv.PointSet(np.column_stack(gridX.ravel(), gridY.ravel(), gridZ.ravel())), style='points_gaussian', scalars=gridZ.ravel(), cmap='RdYlBu_r', clim=[-1,1], opacity=1.0, point_size=3, render_points_as_spheres=False)
+			#p.add_mesh(pv.StructuredGrid(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-1,1], opacity=0.9, point_size=5, show_scalar_bar=False)
 
 			### MODEL wireframe
 			#gridX, gridY, gridZ = _modelGrid(sin=False)
-			grid = _surface(gridX, gridY, gridZ)
+			grid = pv.StructuredGrid(gridX, gridY, gridZ)
 			grid.texture_map_to_plane(inplace=True)
 
 			p.add_mesh(grid, style='surface', opacity=1.0, line_width=1, texture = pv.read_texture('ssc2008-10a_ext.jpg'))
-			#p.add_mesh(_surface(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-1,1], point_size=10)
+			#p.add_mesh(pv.StructuredGrid(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-1,1], point_size=10)
 
 			### smoooth MODEL wireframe
 			#_smoothModelGrid(p, sin=False)
@@ -991,7 +1781,7 @@ if __name__ == '__main__':
 				lineR = np.arange(8, 22.1, 0.2)
 				linePHI = np.repeat(phi, lineR.size)
 				lineX, lineY = RPHI2XY(lineR, linePHI)
-				lineResidual = convolveZ(X, Y, Z, mass, 0.5, lineX, lineY) - function((lineR, linePHI), best, sin=False)
+				lineResidual = convolveZ(X, Y, Z, mass, lineX, lineY, kernel=0.5) - function((lineR, linePHI), best, sin=False)
 				xyr = np.vstack((lineX, lineY, lineResidual)).T
 				p.add_lines(xyr, color='k', width=2)
 				#p.add_mesh(pv.StructuredGrid(lineX, lineY, lineResidual), style='wireframe', scalars=lineResidual, color='RdYlBu_r', clim=[-.05,.05], opacity=1.0, line_width=5 if i%2==1 else 0)
@@ -1000,18 +1790,18 @@ if __name__ == '__main__':
 				linePHI = np.arange(-30, 180, 1)
 				lineR = np.repeat(r, linePHI.size)
 				lineX, lineY = RPHI2XY(lineR, linePHI)
-				lineResidual = convolveZ(X, Y, Z, mass, 0.5, lineX, lineY) - function((lineR, linePHI), best, sin=False)
+				lineResidual = convolveZ(X, Y, Z, mass, lineX, lineY, kernel=0.5) - function((lineR, linePHI), best, sin=False)
 				xyr = np.vstack((lineX, lineY, lineResidual)).T
 				p.add_lines(xyr, color='k', width=2)
 				#p.add_mesh(pv.StructuredGrid(lineX, lineY, lineResidual), style='wireframe', scalars=lineResidual, color='RdYlBu_r', clim=[-.05,.05], opacity=1.0, line_width=5 if r%1==0 else 0)
 			
 			gridX, gridY, gridZ = _residualGrid(step=(0.2, 1), polar=True)
-			#p.add_mesh(_surface(gridX, gridY, gridZ), style='wireframe', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-.1,.1], opacity=1.0, line_width=3)
-			p.add_mesh(_surface(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-.1,.1], opacity=0.7)
+			#p.add_mesh(pv.StructuredGrid(gridX, gridY, gridZ), style='wireframe', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-.1,.1], opacity=1.0, line_width=3)
+			p.add_mesh(pv.StructuredGrid(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-.1,.1], opacity=0.7)
 		
 			#gridX, gridY, gridZ = _modelGrid(warp=False)
-			#p.add_mesh(_surface(gridX, gridY, gridZ), style='wireframe', color='k', opacity=1.0, line_width=2)
-			#p.add_mesh(_surface(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-1,1], point_size=10)
+			#p.add_mesh(pv.StructuredGrid(gridX, gridY, gridZ), style='wireframe', color='k', opacity=1.0, line_width=2)
+			#p.add_mesh(pv.StructuredGrid(gridX, gridY, gridZ), style='surface', scalars=gridZ.T, cmap='RdYlBu_r', clim=[-1,1], point_size=10)
 
 			p.set_scale(xscale=1, yscale=1, zscale=5)	#scale z by 10
 			p.set_position([-60, 30, 15])	#position of eye
@@ -1057,7 +1847,7 @@ if __name__ == '__main__':
 		from mayavi import mlab
 
 		zscale = 5
-		gridX, gridY, gridZ = _convolveData2Grid(step=(0.75, 5), polar=True, warp=False, residual=False, sin=False)
+		gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.75, 5), polar=True)
 
 
 		# Start a new figure
@@ -1082,7 +1872,8 @@ if __name__ == '__main__':
 
 
 		### R axis
-		for phi in list(range(323, 155, -12))+[155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]:
+		from shared import rad_sep
+		for phi in list(range(323, 155, -12))+rad_sep:
 			#for phi in np.arange(0, 360, 15):
 			lineR = np.arange(8.5, 20.6, 0.1)
 			linePHI = np.repeat(phi, lineR.size)
@@ -1139,7 +1930,8 @@ if __name__ == '__main__':
 
 		
 		### phi sector text
-		phi_sep = [155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, None, -11, -17, -27]
+		from shared import rad_sep
+		phi_sep = rad_sep[:-3]+[None]+rad_sep[-3:]
 		label = 0
 		for i in range(len(phi_sep)-1):
 			if phi_sep[i] is None or phi_sep[i+1] is None: continue
@@ -1277,7 +2069,7 @@ if __name__ == '__main__':
 
 
 	### interactive online figure
-	if 1:
+	if 0 and not sin:
 		from shared import *
 		import plotly.graph_objs as go
 		figscale = 1
@@ -1289,16 +2081,16 @@ if __name__ == '__main__':
 		markersize = np.log10(mass)*3
 		markersize -= np.nanmin(markersize)-1
 		clouds = go.Scatter3d(x=X, y=Y, z=Z, mode='markers', visible=False, \
-			marker=dict(size=markersize, color=markersize, colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5, opacity=0.5, line=dict(width=0), \
+			marker=dict(size=markersize, color=Z, colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5, opacity=0.5, line=dict(width=0), \
 			colorbar=dict(thickness=25, title=dict(text='Z (kpc)', font=dict(size=int(20*fontscale), weight='bold')), \
 				x=0.24, y=0.12, len=0.3, orientation='h', tickvals=np.arange(-0.5,1,0.25), tickfont=dict(size=int(18*fontscale)))))
 
 		### median
-		gridX, gridY, gridZ = _convolveData2Grid(step=(0.75, 5), polar=True, warp=False, residual=False, sin=False)
+		gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.75, 5), polar=True)
 		gridR, gridPHI = XY2RPHI(gridX, gridY)
 
 		#gridZ = gridZ - function((gridR, gridPHI), bestmed, warp1=True, sin=False)
-		#gridR, gridPHI, gridZ = _convolveData2Grid(step=(0.5, 0.5), polar=False)
+		#gridR, gridPHI, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.5, 0.5), polar=False)
 		meds = go.Scatter3d(x=gridX.ravel(), y=gridY.ravel(), z=gridZ.ravel(), mode='markers', \
 			marker=dict(size=6, color=gridZ.ravel(), colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5, opacity=1.0, \
 			colorbar=dict(thickness=25, title=dict(text='Z (kpc)', font=dict(size=int(20*fontscale), weight='bold')), \
@@ -1309,12 +2101,13 @@ if __name__ == '__main__':
 		wires = []
 		line_marker = dict(color='#000000', width=5)#, colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5)
 		### R axis
-		for phi in list(range(323, 155, -12))+[155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]:
+		from shared import rad_sep
+		for phi in list(range(323, 155, -12))+rad_sep:
 			#for phi in np.arange(0, 360, 15):
 			lineR = np.arange(8.5, 20.6, 0.5)
 			linePHI = np.repeat(phi, lineR.size)
 			lineX, lineY = RPHI2XY(lineR, linePHI)
-			lineZ = function((lineR, linePHI), bestmed, warp=True, sin=True)
+			lineZ = function((lineR, linePHI), bestmed, warp=True, sin=False)
 			#line_marker['color'] = lineZ
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ, mode='lines', line=line_marker))
 
@@ -1323,13 +2116,13 @@ if __name__ == '__main__':
 			linePHI = np.linspace(0, 360, int(360*r)//40)
 			lineR = np.repeat(r, linePHI.size)
 			lineX, lineY = RPHI2XY(lineR, linePHI)
-			lineZ = function((lineR, linePHI), bestmed, warp=True, sin=True)
+			lineZ = function((lineR, linePHI), bestmed, warp=True, sin=False)
 			#line_marker['color'] = lineZ
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ, mode='lines', line=line_marker))
 
 
 		### phi sector text
-		sectorPhi = np.array([(p1+p2)/2 for p1,p2 in zip([155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, -11, -17], [143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -17, -27])])
+		sectorPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:])])
 		sectorR = np.repeat(22.5, len(sectorPhi))
 		sectorZ = function((sectorR, sectorPhi), bestmed)
 		sectorX, sectorY = RPHI2XY(sectorR, sectorPhi)
@@ -1430,7 +2223,7 @@ if __name__ == '__main__':
 
 		# Create a Figure object and add the 3d objects to it
 		if component==1:
-			trace = [clouds, meds, *wires, sectorText, annulusText, sun, gc, _rphiw, _phiw_1comp]
+			trace = [clouds, meds, *wires, sectorText, annulusText, sun, gc, _phiw_1comp]#_rphiw
 		else:
 			trace = [clouds, meds, *wires, sectorText, annulusText, sun, gc]
 		fig = go.Figure(data=trace, layout=layout)#
@@ -1455,12 +2248,13 @@ if __name__ == '__main__':
 
 
 		### Show the plot
-		if 1: fig.show()
+		if 0: fig.show()
 		else:
 			fig.write_image("fig/median_model_%icomp.png" % component)#, scale=3)
 			fig.write_html("fig/median_model_%icomp.html" % component)#, scale=3)
 
-	if 0:
+
+	if 1 and sin:
 		figscale = 1
 		fontscale = 1.3
 
@@ -1469,8 +2263,8 @@ if __name__ == '__main__':
 		
 		
 		### residual
-		resX, resY, resZ = _convolveData2Grid(step=(0.25, 1), polar=True, residual=False)
-		resX, resY, resZ = _excludedXYZ(resX, resY, resZ)
+		resX, resY, resZ = convolveZonGrid(X, Y, Z, mass, step=(0.25, 1), polar=True)
+		#resX, resY, resZ = _excludedXYZ(resX, resY, resZ)
 		residual = go.Surface(x=resX, y=resY, z=resZ, surfacecolor=resZ, colorscale='RdYlBu_r', cmin=-0.2, cmax=0.2, opacity=1,
 			colorbar=dict(thickness=25, title=dict(text='Z (kpc)', font=dict(size=int(20*fontscale), weight='bold')), \
 				x=0.72, y=0.12, len=0.3, orientation='h', tickvals=np.arange(-0.2,0.5,0.1), tickfont=dict(size=int(18*fontscale))))
@@ -1483,11 +2277,12 @@ if __name__ == '__main__':
 		wires = []
 		line_marker = dict(color='#223322', width=5)
 		#for phi in np.arange(0, 360, 15):
-		for phi in list(range(323, 155, -12))+[155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]:
+		from shared import rad_sep
+		for phi in list(range(323, 155, -12))+rad_sep:
 			lineR = np.arange(8, 22.1, 0.25)
 			linePHI = np.repeat(phi, lineR.size)
 			lineX, lineY = RPHI2XY(lineR, linePHI)
-			lineZ = convolveZ(X, Y, Z, mass, 0.75, lineX, lineY)
+			lineZ = convolveZ(X, Y, Z, mass, lineX, lineY)
 			if phi in [29,38]: line_marker['width']=15
 			else: line_marker['width']=5
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ+0.01, mode='lines', line=line_marker))
@@ -1497,15 +2292,15 @@ if __name__ == '__main__':
 			linePHI = np.arange(0, 360.1, 1)
 			lineR = np.repeat(r, linePHI.size)
 			lineX, lineY = RPHI2XY(lineR, linePHI)
-			lineZ = convolveZ(X, Y, Z, mass, 0.75, lineX, lineY)
+			lineZ = convolveZ(X, Y, Z, mass, lineX, lineY)
 			if r in [12,]: line_marker['width']=15
 			else: line_marker['width']=5
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ+0.01, mode='lines', line=line_marker))
 		
 		
 		#sectorPosPhi = np.arange(165, -35, -15)-7.5
-		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip([155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, -11, -17], [143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -17, -27])])
-		sectorPosR = np.linspace(20, 24, sectorPosPhi.size)
+		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:])])
+		sectorPosR = np.linspace(17, 19, sectorPosPhi.size)
 		sectorPosZ = np.zeros(sectorPosPhi.size)
 		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
 		sectorText = []
@@ -1538,7 +2333,7 @@ if __name__ == '__main__':
 			xanchor='left', xshift=5, yanchor='bottom', font=dict(color='#666666', size=int(18*fontscale)))
 
 		### arrow
-		arrowR = 25
+		arrowR = 21
 		a = np.linspace(24.5, 53, 200) /180*np.pi
 		arrowX = np.concatenate( (arrowR * np.sin(a), [(arrowR+0.5) * np.sin(a[-20])]) )
 		arrowY = np.concatenate( (arrowR * np.cos(a), [(arrowR+0.5) * np.cos(a[-20])]) )
@@ -1566,9 +2361,9 @@ if __name__ == '__main__':
 		layout = go.Layout(
 			scene=dict(
 				xaxis=dict(title = dict(text='X (kpc)', font=title_font), #
-					range=[-10.01, 25.01], tickvals=np.arange(-10,25.1,5), **tick_kws),
+					range=[-8.01, 20.01], tickvals=np.arange(-10,25.1,5), **tick_kws),
 				yaxis=dict(title=dict(text='Y (kpc)', font=title_font), #
-					range=[-20.01, 25.01], tickvals=np.arange(-20,25.1,5), **tick_kws),
+					range=[-16.01, 20.01], tickvals=np.arange(-20,25.1,5), **tick_kws),
 				zaxis=dict(title=dict(text='ΔZ (kpc)', font=title_font), #
 					range=[-1.01, 1.01], tickvals=np.arange(-0.5, 2, 0.5), zerolinecolor='#000000',zerolinewidth=5, **tick_kws),
 				annotations=[

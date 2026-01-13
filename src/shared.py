@@ -2,18 +2,27 @@
 
 import numpy as np
 import matplotlib as mpl
+import pandas as pd
 ### Warp Params
 p_1comp = [0,  0.09362826, 8.56849936, 1.05015227, -0.7049789 ]##1st exclude 160-200
 #[-0.0717748888594908, 0.1074529579441738, 7.8409214840721795, 0.9370789056657302, -8.059413168263955]   
 p_2comp = [0, 1.19228266e-01, 9.01450681e+00, -3.53824563e+00, -1.24059941e-02, 1.27147257e+01, 2.03108539e+00, -2.04459975e+01]##2nd exclude 160-200
 #[0, 1.19210237e-01, 9.01434283e+00, -3.53962133e+00, -1.24379884e-02, 1.27166892e+01, 2.03007431e+00, -2.04479290e+01]## not properly burn-in
 
-
+# sin with damp period
 p_sin1comp = [0.20052978, 7.83808911, 2.76825318, 0.17047776, 0.01625255]	# 1comp+sin
 #[0.2012454, 7.8246938, 2.78618375, 0.16944783, 0.01766535] # not properly burn-in
 #p_sin1comp = [0.19725642, 7.49363834, 3.69774322, 0.01476242] #1comp+sin(fix P1=0)
 p_sin2comp = [0.19866392, 7.95872642, 2.61382166, 0.20077682, 0.02240027] # 2comp+sin
 #[0.19869108, 7.958983, 2.61323087, 0.20085326, 0.02240435] # use not properly burn-in 2comp result
+
+#radcliffe wave + free phi width
+p_rad1comp = ([0.2000, 11.3651, 3.8522, 4.7776, 0.0968, 31.7963, 9.6802], 
+	[-0.1466, 14.2452, 4.5423, -17.1834], [-0.0997, 10.7216, 4.2233, 61.9456], [-0.1033, 10.0907, 3.5992, 106.0447], [0.2852, 11.9379, 7.9774, 141.9115])
+p_rad2comp = ([0.1798, 11.3697, 6.8567, 4.5007, 0.0800, 31.6410, 9.2270],
+	[-0.1359, 14.1529, 4.3494,- 16.3676], [-0.1291, 10.7583, 4.4029, 61.6866], [-0.1204, 10.1934, 3.5576, 106.0012], [0.2537, 11.9445, 7.6762, 143.0137])
+p_circ1comp = [0.1673, 22.3272, 52.3849, 12.7471, 0.8703]
+p_circ2comp = [0.1618, 21.6950, 52.8728, 12.6713, 0.8555]
 
 ### Arm Params
 best_per=[30.03, 10.062122711773025, 9.839300621559302]  #mass  
@@ -30,6 +39,10 @@ labelHI = 'HI'
 colorCeph = 'gray'
 styleCeph = (0,(6,3))#'--'
 labelCeph = 'Cepheids'
+#RC giant
+colorRC = 'gray'
+styleRC = (0,(5,2,1,2))#'--'
+labelRC = 'Red clump'
 #CO 1comp
 colorCO1 = 'coral'
 styleCO1 = ':'
@@ -54,8 +67,10 @@ ring_kws_mc   = dict(color='#2074b0', edgecolors='none', alpha=0.2, zorder=5)
 ring_kws_bin  = dict(color=darkerColor('#2074b0'),  lw=2, alpha=0.8, zorder=20)#5ABEF0
 ring_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1,   label=labelHI,   zorder=11)
 ring_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1,   label=labelCeph, zorder=12)
-ring_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=0.8, label=labelCO1,  zorder=13)
-ring_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=0.8, label=labelCO2,  zorder=14)
+ring_kws_rc   = dict(color=colorRC,   ls=styleRC,   lw=1,   label=labelRC,   zorder=13)
+ring_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=0.8, label=labelCO1,  zorder=14)
+ring_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=0.8, label=labelCO2,  zorder=15)
+ring_kws_sin  = dict(color=colorCO1,  ls=(0, (1.5,1)),lw=3,   label='SIN comp',zorder=16)
 ring_kws_text = dict(color=colorText, ha='left', va='top', fontsize=20, fontweight='bold')
 
 ### kws in radial plots: corrugation1b.py, corrugation_resi.py, corrugation_resi_xf.py
@@ -63,24 +78,28 @@ rad_kws_mc   = dict(color='#008080', edgecolors='none', alpha=0.3, zorder=5)
 rad_kws_err  = dict(color=darkerColor('#008080'), fmt='.', markersize=5., elinewidth = 1, capsize=2, zorder=10)
 rad_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1.5, label=labelHI,   zorder=11)
 rad_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1.5, label=labelCeph, zorder=12)
-rad_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=1,   label=labelCO1,  zorder=13)
-rad_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zorder=14)
+rad_kws_rc   = dict(color=colorRC,   ls=styleRC,   lw=1.5, label=labelRC,   zorder=13)
+rad_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=1,   label=labelCO1,  zorder=14)
+rad_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zorder=15)
 rad_kws_sin  = dict(color=colorCO1,  ls=':',       lw=3,   label='SIN comp',zorder=11)
 rad_kws_text = dict(color=colorText, ha='left', va='top', fontsize=20, fontweight='bold')
+#rad_sep = [155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]
+rad_sep = [155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 10, -7, -16, -27]
 
 ### kws in arm plots: warp_out.py / warp_per.py / warp_osc.py / warp_osc_b.py
 arm_kws_mc   = dict(color='#4169e1', edgecolors='none', alpha=0.2, zorder=5)
 arm_kws_bin  = dict(color=darkerColor('#4169e1'),  lw=2, alpha=0.8, zorder=20)
 arm_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1.5, label=labelHI,   zorder=11)
 arm_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1.5, label=labelCeph, zorder=12)
-arm_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=1,   label=labelCO1,  zorder=13)
-arm_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zorder=14)
+arm_kws_rc   = dict(color=colorRC,   ls=styleRC,   lw=1.5, label=labelRC,   zorder=13)
+arm_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=1,   label=labelCO1,  zorder=14)
+arm_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zorder=15)
 arm_kws_text = dict(color=colorText, ha='left', va='top', fontsize=20, fontweight='bold')
 
 textwidth=18 #inches, width of text in latex
 subfigureIndexFont = dict(family="Arial Black", size=24)
 mpl.rcParams['savefig.format'] = 'pdf'
-mpl.rcParams['savefig.dpi'] = 400
+mpl.rcParams['savefig.dpi'] = 280
 mpl.rcParams['axes.linewidth'] = 0.8
 mpl.rcParams['axes.labelsize'] = 20
 mpl.rcParams['axes.labelweight'] = 'bold'
@@ -101,6 +120,7 @@ def funciton_loglinear(x,a,b):
 
 def function_arm(PHI, p):
 	### arm function, PHI in degree, return R in kpc
+	### p = (PHIkink, Rkink, pitch1, pitch2, ...)
 	PHI = np.array(PHI)
 	if len(p)>3:  ###use kink
 		PHIkink, Rkink, pitchAngle1, pitchAngle2 = p
@@ -122,15 +142,16 @@ def function_arm(PHI, p):
 	return np.exp(lnR)
 
 
-def function_warp(x, p=p_1comp, sin=None):
+def function_warp(x, p=p_1comp, rad=None, circ=None):
 	### warp function, return Z
 	R, PHI = x
 	a0 = p[0]
 
-	if isinstance(R, (int, float)):
-		R = np.ones(PHI.shape) * R
-	elif isinstance(PHI, (int, float)):
-		PHI = np.ones(R.shape) * PHI
+	R, PHI = np.broadcast_arrays(R, PHI)
+	#if isinstance(R, (int, float)):
+	#	R = np.ones(PHI.shape) * R
+	#elif isinstance(PHI, (int, float)):
+	#	PHI = np.ones(R.shape) * PHI
 	z = np.ones(R.shape) * a0
 
 	if len(p)<=5: #1 comp
@@ -144,10 +165,24 @@ def function_warp(x, p=p_1comp, sin=None):
 		idx = R>Rw2
 		z[idx] += a2 * (R[idx]-Rw2)**bw2 * np.sin(2*np.deg2rad(PHI[idx]-PHIw2))
 
-	if sin is not None:
-		PHIsin, PHIsinwid = 33.5, 4
-		asin, Rsin, Period0, Period1, a4 = sin
-		z[idx] += (a4*(R[idx] - Rsin) + asin*np.sin( (R[idx] - Rsin) / (Period0 + Period1*(R[idx]-Rsin)) * 2*np.pi )) * np.exp(-(PHI[idx]-PHIsin)**2/ 2 / PHIsinwid**2)
+	if rad is not None:
+		# radcliffe wave function
+		Amp, Rrad, sigmarad, Period, Amp0, PHIcirc, sigmacirc = rad[0]
+		d = R-Rrad
+		z += np.exp(-d**2/2/sigmarad**2) * (Amp * np.sin(2 * np.pi * d / Period) + Amp0) * np.exp(-(PHI-PHIcirc)**2/ 2 / sigmacirc**2)
+		for i in [1,2,3]:
+			Amp, Rrad, Period, PHIcirc = rad[i]
+			d = R-Rrad
+			z += np.exp(-d**2/2/4**2) * (Amp * np.sin(2 * np.pi * d / Period)) * np.exp(-(PHI-PHIcirc)**2/ 2 / 9.5**2)
+		Amp, Rrad, Period, PHIcirc = rad[4]
+		d = R-Rrad
+		z += np.exp(-d**2/2/2**2) * (Amp * np.sin(2 * np.pi * d / Period)) * np.exp(-(PHI-PHIcirc)**2/ 2 / 9.5**2)
+
+
+	if circ is not None:
+		Amp, PHIcirc, Period, Rrad, sigmarad = circ
+		z += Amp * np.sin(2 * np.pi * (PHI-PHIcirc) / Period ) * np.exp(-(R-Rrad)**2/ 2 / sigmarad**2)
+
 	return z
 
 
@@ -179,12 +214,13 @@ def mass_distribute(mass):
 	return normSize, normColor
 
 
-def cal_warp(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200), scale=0.95):
+def cal_warp_HI(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200), scale=0.95):
 	# regulate R, PHI *95%
-	if isinstance(R, (int, float)):
-		R = np.ones(PHI.shape) * R
-	else:
-		PHI = np.ones(R.shape) * PHI
+	R, PHI = np.broadcast_arrays(R, PHI)
+	#if isinstance(R, (int, float)):
+	#	R = np.ones(PHI.shape) * R
+	#else:
+	#	PHI = np.ones(R.shape) * PHI
 
 	Rs=R/scale
 
@@ -216,10 +252,11 @@ def cal_warp(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200), scale=
 
 def cal_warpc(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
 	### calculate z at certain R and PHI in kpc
+	R, PHI = np.broadcast_arrays(R, PHI)
 	p1=[9.26, 17.4, 0.148]
 	p2=[7.72, 17.5, 0.06, 1.33]
 
-	zw1, zw2, zw4,zw5 =[], [], [], []
+	zw1, zw2, zw4, zw5 =[], [], [], []
 	zw1=p1[2] * (R-p1[0]) * np.sin(np.deg2rad(PHI-p1[1]))   # chenxiaodian all b=1
 	zw2=p2[2] * (R-p2[0])**p2[3] * np.sin(np.deg2rad(PHI-p2[1]))  # chenxiaodian all b=1.33
 	#zw3=-p3[0]+(R - 8)**2*(p3[1]*np.sin(np.deg2rad(PHI-p3[2]))+p3[3]*np.sin(2.0*(PHI-p3[4])/180.*np.pi))  
@@ -232,10 +269,45 @@ def cal_warpc(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
 	return zw1, zw2, zw4, zw5
 
 
-def cal_warpmwisp(R):
-	a0, a, Rw, PHIw, b=[1.01,2.62,8.8,120.38,1.34] 
-	zw=a0 + a * (R - Rw)**b * np.sin((PHI-PHIw) / 180 * np.pi)
-	return(PHI,zw)
+def cal_warp_Ceph(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
+	### calculate z at certain R and PHI in kpc, using ChenXiaodian's model
+	#b=1
+	R, PHI = np.broadcast_arrays(R, PHI)
+
+	R_w, phi_w, Amp = [9.26, 17.4, 0.148]
+	zw1 = np.zeros_like(R)
+	idx = R>R_w
+	zw1[idx] += Amp * (R[idx]-R_w) * np.sin(np.deg2rad(PHI[idx]-phi_w))
+
+	#b=1.33
+	R_w, phi_w, Amp, b_w=[7.72, 17.5, 0.06, 1.33]
+	zw2 = np.zeros_like(R)
+	idx = R>R_w
+	zw2[idx] += Amp * (R[idx]-R_w)**b_w * np.sin(np.deg2rad(PHI[idx]-phi_w))
+
+	return zw1, zw2
+
+
+def cal_warp_MWSIP(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
+	### calculate z at certain R and PHI in kpc
+	R, PHI = np.broadcast_arrays(R, PHI)
+	zw1=function_warp((R, PHI), p_1comp) ##mwisp first component
+	zw2=function_warp((R, PHI), p_2comp) #mwisp two component
+	return zw1, zw2
+
+
+def cal_warp_RC(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
+	### calculate z at certain R and PHI in kpc, using Khanna2025 model
+	R, PHI = np.broadcast_arrays(R, PHI)
+	R_w = 8.79
+	Amp = 0.083
+	a_w = 2.0
+	phi_w = 180-178
+
+	zw = np.zeros_like(R)
+	idx = R>R_w
+	zw[idx] += Amp * (R[idx]-R_w)**a_w * np.sin(np.deg2rad(PHI[idx]-phi_w))
+	return zw
 
 
 def weighted_avg_and_std(values, weights):
@@ -245,14 +317,15 @@ def weighted_avg_and_std(values, weights):
 	return (average, np.sqrt(variance))
 
 
-def bin_data(x, y, w, grid=None, width=1, method='median'):
+def bin_data(x, y, w, grid=None, width=1, method='median', minbin=10):
 	xmean = []
 	xstd = []
 	ymean = []
 	ystd = []
 	for xc in grid:
 		idx = (x>=xc-width/2) & (x<xc+width/2)
-		if idx.sum() >= 3:
+		#if idx.sum()>0: print(xc, idx.sum())
+		if idx.sum() >= minbin:
 			if method == 'median':
 				wc = w * idx.astype(int)
 			elif method == 'gauss':
@@ -392,14 +465,15 @@ def insert_arm_plot(ax, bbox, boldArm='per', boldRange=[-50, 100]):
 
 
 d2r = np.pi/180
-def g2gc(l, b, d):
+def g2gc(l, b, d, xyz=False):
 	#galactic to galactocentric
-	X = d * np.cos(b*d2r) * np.cos(l*d2r) - 8.15
-	Y = d * np.cos(b*d2r) * np.sin(l*d2r)
+	X = d * np.cos(b*d2r) * np.sin(l*d2r)
+	Y = - d * np.cos(b*d2r) * np.cos(l*d2r) + 8.15
 	Z = d * np.sin(b*d2r)
+	if xyz: return X, Y, Z
 
 	Rgal = np.sqrt(X**2 + Y**2)
-	Az = np.arctan2(Y, -X) / d2r #az=0 toward sun and counterclockwise
+	Az = np.arctan2(X, Y) / d2r #az=0 toward sun and counterclockwise
 	return Rgal, Az, Z
 
 def gc2g(Rgal, Az, Z):
@@ -417,10 +491,10 @@ def gc2g(Rgal, Az, Z):
 ### import OB star catalog
 from astropy.io import fits
 hdu = fits.open('OBstars.fits')
-data = hdu[1].data
-starL = data['GLON']
-starB = data['GLAT']
-starD = data['DistBJ']/1e3
+obDat = hdu[1].data
+starL = obDat['GLON']
+starB = obDat['GLAT']
+starD = obDat['DistBJ']/1e3
 idx = np.abs(starB)<5.25
 starL = starL[idx]
 starB = starB[idx]
@@ -432,8 +506,103 @@ starY = starD * np.cos(starB*d2r) * np.sin(starL*d2r)
 
 ### digit to unicode of subscript
 def to_subscript(n):
-    sub_map = str.maketrans('0123456789', '₀₁₂₃₄₅₆₇₈₉')
-    return str(n).translate(sub_map)
+	sub_map = str.maketrans('0123456789', '₀₁₂₃₄₅₆₇₈₉')
+	return str(n).translate(sub_map)
+
+
+
+### Poggio warp (Poggio, E., et al. 2025 A&A 699, 199)
+def function_PoggioWarp(x, cepheids=True, straight=False):
+	### warp function, return Z
+	R, PHI = x
+
+	if isinstance(R, (int, float)):
+		R = np.ones(PHI.shape) * R
+	elif isinstance(PHI, (int, float)):
+		PHI = np.ones(R.shape) * PHI
+
+	if cepheids:
+		R_w = 7.7 #kpc
+		h_w0 = 0.057 #kpc**(1-aw)
+		a_w = 1.3
+		phi_lon0 = 0.9 #deg
+		R_t = 12.6 #kpc
+		beta_w = 8.0 #kpc
+		phi_straightlon = 9.9 #deg
+	else:
+		#young giants
+		R_w = 5.5 #kpc
+		h_w0 = 0.012 #kpc**(1-aw)
+		a_w = 1.9
+		phi_lon0 = 0.1 #deg
+		R_t = 12.1 #kpc
+		beta_w = 9.9 #kpc
+		phi_straightlon = 14.0 #deg
+
+	def h_w(R):
+		cond = [R<=R_w, R>R_w]
+		func = [lambda x: h_w0, lambda x: h_w0 * (R-R_w)**a_w]
+		return np.piecewise(R, cond, func)
+	def phi_lon(R, straight=False):
+		if straight:
+			return phi_lon0 * np.ones(R.shape)
+		else:
+			cond = [R<=R_t, R>R_t]
+			func = [lambda x: phi_lon0, lambda x: phi_lon0 + beta_w * (x-R_t)]
+			return np.piecewise(R, cond, func)
+
+	Z_w = h_w(R) * np.sin(np.deg2rad(PHI - phi_lon(R, straight=straight)))
+	return Z_w
+
+#load Poggio Cepheids catalog
+from astropy.io import ascii
+cepheid = ascii.read("star/CepheidTable")['glon', 'glat', 'd-all', 'e_d-all']
+cepheid.rename_columns(['glon', 'glat', 'd-all', 'e_d-all'], ['l', 'b', 'd', 'ed'])
+for col in cepheid.columns.values():
+	col.unit = None
+cepheid['d'] = cepheid['d']/1e3 #to kpc
+cepheid['ed'] = cepheid['ed']/1e3 #to kpc
+cepheid = cepheid[cepheid['ed'] < cepheid['d']*0.1]
+cepheid['w'] = 1/cepheid['ed']**2
+cepheid['x'], cepheid['y'], cepheid['z'] = g2gc(cepheid['l'], cepheid['b'], cepheid['d'], xyz=True)
+cepheid['r'], cepheid['az'], cepheid['z'] = g2gc(cepheid['l'], cepheid['b'], cepheid['d'], xyz=False)
+
+#load Poggio Young giant catalog
+ygiant = ascii.read("star/YoungGiantTable")['col2', 'col3', 'col4', 'col5']
+ygiant.rename_columns(['col2', 'col3', 'col4', 'col5'], ['l', 'b', 'd', 'ed'])
+ygiant = ygiant[ygiant['ed'] < ygiant['d']*0.5]
+ygiant['w'] = 1/ygiant['ed']**2
+ygiant['x'], ygiant['y'], ygiant['z'] = g2gc(ygiant['l'], ygiant['b'], ygiant['d'], xyz=True)
+ygiant['r'], ygiant['az'], ygiant['z'] = g2gc(ygiant['l'], ygiant['b'], ygiant['d'], xyz=False)
+
+
+def arm_mask(az, r):
+	### interpolate a mask for outer arm
+	from scipy.stats import binned_statistic
+	def envelope(arm_file, bins = np.arange(-40, 180, 3)):
+		data = np.loadtxt(arm_file, comments='#')
+		r = data[:,11]
+		#z = data[:,14]
+		az = data[:,19]
+		ma, edges, num = binned_statistic(az, r, statistic='max', bins=bins)
+		mi, edges, num = binned_statistic(az, r, statistic='min', bins=bins)
+		edges = (edges[:-1]+edges[1:])/2
+		idx = ((edges>-26) & (edges<-6)) | ((edges>4) & (edges<153))
+		return edges[idx], ma[idx], mi[idx]
+
+	e, perMax, _ = envelope('per_para.txt')
+	e, outMax, outMin = envelope('out_para.txt')
+	e, _, oscMin = envelope('osc2_para.txt')
+
+	import scipy.interpolate as sp_interp
+	outMin = np.nanmean([perMax, outMin], axis=0)
+	outMax = np.nanmean([outMax, oscMin], axis=0) 
+
+	fMin = sp_interp.interp1d(e, outMin, fill_value='extrapolate')
+	fMax = sp_interp.interp1d(e, outMax, fill_value='extrapolate')
+
+	mask = (r >= fMin(az)) & (r <= fMax(az))
+	return mask
 
 '''
 def readCepheidCat(cat='allGalCep.listID'):
@@ -442,7 +611,4 @@ def readCepheidCat(cat='allGalCep.listID'):
 	l = df[]
 	return df
 
-
-a = readCepheidCat()
-print(a.shape)
 '''

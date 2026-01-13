@@ -9,10 +9,12 @@ from shared import *
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-ob = True
+suffix = ''#'_xf'
+ceph = 1
+ob = 0
 
 if __name__ == '__main__':
-	figscale = 1.0
+	figscale = 0.8#0.88 if ceph else 1.0
 	figwidth = textwidth*figscale
 
 	out_data = np.loadtxt('out_para.txt',comments='#')
@@ -35,19 +37,17 @@ if __name__ == '__main__':
 	#mass = (np.vstack((osc_data*3, out_data*1.5, per_data)).T)[7]
 	com = data[8]
 
-	print(az.min(), az.max())
+	print('az:', az.min(), '~', az.max())
 	scatter_size, scatter_color = mass_distribute(mass)
 	gr_axis = np.linspace(7.5, 22, 200)
 
-	fig1, ax = plt.subplots(nrows=3, ncols=5, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.5))
+	fig, ax = plt.subplots(nrows=3, ncols=5, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.5))
 	plt.subplots_adjust(left=0.06, right=0.98, wspace=0, hspace=0)
 	ax = ax.ravel()
 
 
-
-
-
-	theta_sep = [155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]
+	#theta_sep = [155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]
+	theta_sep = rad_sep
 	sep = -1
 	for i in range(len(theta_sep)-2):
 		### skip 11 ~ -11
@@ -60,26 +60,49 @@ if __name__ == '__main__':
 		idx = (az >= theta2) & (az < theta1)
 		### plot cloud
 		ax[i].scatter(rr[idx], zz[idx], s=scatter_size[idx]*2, **rad_kws_mc)
-
-		### OB stars
-		if ob:
-			starIdx = (starAz >= theta2) & (starAz < theta1)
-			ax[i].scatter(starR[starIdx], starZ[starIdx], s=1, c='red', zorder=9)#, **rad_kws_mc)
-
+		
 		### plot binned average and errorbar
-		rcen, rrms, zcen, zrms = bin_data(rr[idx], zz[idx], mass[idx], grid=np.arange(8.15 if i<5 else 8, 30, 1), width=1, method='gauss')
+		rcen, rrms, zcen, zrms = bin_data(rr[idx], zz[idx], mass[idx], grid=np.arange(8.15 if i<5 else 8, 30, 1), width=1, method='gauss', minbin=5)
 		#rcen, rrms, zcen, zrms = cal_zcen_zrms(rr[idx], zz[idx], weights=mass[idx], binsize=-1, bin0=8.15 if i<5 else 8)
 		ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., **rad_kws_err)
 
+		if ceph:
+			ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., label='MWISP clouds', **rad_kws_err)
+
+			subC = cepheid[(cepheid['az'] >= theta2) & (cepheid['az'] < theta1)]
+			ax[i].scatter(subC['r'], subC['z'], s=15, facecolor='orangered', edgecolor='none', alpha=0.8, zorder=200)
+			rcen, rrms, zcen, zrms = bin_data(subC['r'], subC['z'], np.ones(len(subC)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=5)
+			ax[i].plot(rcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
+			'''
+			subY = ygiant[(ygiant['az'] >= theta2) & (ygiant['az'] < theta1) & (np.abs(ygiant['z'])<1)]
+			ax[i].scatter(subY['r'], subY['z'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
+			rcen, rrms, zcen, zrms = bin_data(subY['r'], subY['z'], np.ones(len(subY)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=50)
+			ax[i].plot(rcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
+			'''
+			if i == 4:
+				handles, labels = ax[i].get_legend_handles_labels()
+				ax[i].legend(handles[::-1], labels[::-1], loc='lower right', frameon=False, borderpad=0.2, labelspacing=0.1)
+		elif ob:
+			starIdx = (starAz >= theta2) & (starAz < theta1)
+			ax[i].scatter(starR[starIdx], starZ[starIdx], s=1, c='red', alpha=0.4, zorder=200)
+			rcen, rrms, zcen, zrms = bin_data(starR[starIdx], starZ[starIdx], np.ones(starIdx.sum()), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=5)
+			ax[i].plot(rcen, zcen, '.-', color='darkred', zorder=200)
+
 		### plot warp models
 		# HI
-		w = cal_warp(gr_axis, theta)
-		ax[i].plot(gr_axis, w, **rad_kws_hi)
-		# cepheids, co
-		zw1, zw2, zw4, zw5=cal_warpc(gr_axis, theta)
-		ax[i].plot(gr_axis, zw1, **rad_kws_ceph)
-		ax[i].plot(gr_axis, zw4, **rad_kws_co1)
-		ax[i].plot(gr_axis, zw5, **rad_kws_co2)
+		zwh = cal_warp_HI(gr_axis, theta)
+		ax[i].plot(gr_axis, zwh, **rad_kws_hi)
+		# cepheids
+		zwc, _ = cal_warp_Ceph(gr_axis, theta)	#b=1 model
+		ax[i].plot(gr_axis, zwc, **rad_kws_ceph)
+		# khanna
+		#zwk = cal_warp_RC(gr_axis, theta)
+		#ax[i].plot(gr_axis, zwk, **rad_kws_rc)
+
+		# CO
+		zw1, zw2=cal_warp_MWSIP(gr_axis, theta)
+		ax[i].plot(gr_axis, zw1, **rad_kws_co1)
+		ax[i].plot(gr_axis, zw2, **rad_kws_co2)
 
 		### plot text
 		text = r'$\mathbf{\phi_{%i}}$=[%s$^{\circ}$, %s$^{\circ}$]' % (i+1, theta1, theta2)
@@ -102,15 +125,19 @@ if __name__ == '__main__':
 			xtk[2] = '  '+xtk[2]	#shift '8' a little right
 			ax[i].set_xticklabels(xtk) # add kpc at the end
 
-		if i == 4: ax[i].legend(loc='lower right', frameon=False, borderpad=0.2, labelspacing=0.1)
-		ax[i].set_xlim([5 if ob else 8, 21.5])
+		if (not ceph) and (i == 4): ax[i].legend(loc='lower right', frameon=False, borderpad=0.2, labelspacing=0.1)
+		ax[i].set_xlim([8 if ceph or ob else 8, 18.5])#21.5])
 		ax[i].set_ylim([-0.8, 1.4])
 
-	if not ob:
-		ax[0].text(-0.22, 0.9, 'c', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#if not ob:
+	#	ax[0].text(-0.22, 0.9, 'c', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
-	plt.savefig('fig/r_z_corrugation%s.%s' % ('_OB' if ob else '', mpl.rcParams['savefig.format']), bbox_inches='tight')
-	plt.savefig('fig/r_z_corrugation%s.png' % ('_OB' if ob else ''), bbox_inches='tight')
+
+	if ceph: bn = 'fig/r_z_MC_Ceph%s' % suffix
+	elif ob: bn = 'fig/r_z_MC_OB%s' % suffix
+	else: bn = 'fig/r_z_MC%s' % suffix
+	fig.savefig(bn+'.pdf', bbox_inches='tight')
+	fig.savefig(bn+'.png', bbox_inches='tight', transparent=False)
 	plt.show()
 
 

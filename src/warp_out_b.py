@@ -132,26 +132,34 @@ if __name__ == '__main__':
 	#lcen, lrms, bcen, brms = cal_zcen_zrms(ll, bb, weights=mass, binsize=-5, bin0=12.5)
 	ax[0].plot(lcen, bcen, '-', **arm_kws_bin)
 
-	# connect broken with dashed
+	### fill gap with dash
 	idx = np.isfinite(bcen)
-	ax[0].plot(lcen[idx], bcen[idx], '--', **arm_kws_bin)
+	#ax[0].plot(lcen[idx], bcen[idx], '--', **arm_kws_bin)
 
 	### calculate warp
 	### HI
-	Z_hi = cal_warp(R, PHI)
-	ll_hi, bb_hi, dd_hi = gc2g(R, PHI, Z_hi)
+	z_hi = cal_warp_HI(R, PHI)
+	ll_hi, bb_hi, dd_hi = gc2g(R, PHI, z_hi)
 	ax[0].plot(ll_hi, bb_hi, **arm_kws_hi)
-	### warp models
-	z1, z2, z4, z5 = cal_warpc(R, PHI)
-	l1, b1, d1 = gc2g(R, PHI, z1)
-	ax[0].plot(l1, b1, **arm_kws_ceph) #Chen b=1')
-	l4, b4, d4 = gc2g(R, PHI, z4)
-	ax[0].plot(l4, b4, **arm_kws_co1)
-	l5, b5, d5 = gc2g(R, PHI, z5)
-	ax[0].plot(l5, b5, **arm_kws_co2)
+
+	# cepheids
+	zwc, _ = cal_warp_Ceph(R, PHI)	#b=1 model
+	ll_ceph, bb_ceph, dd_ceph = gc2g(R, PHI, zwc)
+	ax[0].plot(ll_ceph, bb_ceph, **arm_kws_ceph)
+	# khanna
+	#zwrc = cal_warp_RC(R, PHI)
+	#ll_rc, bb_rc, dd_rc = gc2g(R, PHI, zwrc)
+	#ax[0].plot(ll_rc, bb_rc, **arm_kws_rc)
+
+	# CO
+	zw1, zw2=cal_warp_MWSIP(R, PHI)
+	l1, b1, d1 = gc2g(R, PHI, zw1)
+	ax[0].plot(l1, b1, **arm_kws_co1)
+	l2, b2, d2 = gc2g(R, PHI, zw2)
+	ax[0].plot(l2, b2, **arm_kws_co2)
 
 	ax[0].set_ylim(-5.25, 5.25)
-	ax[0].set_xlim(l4.max(), l4.min())
+	ax[0].set_xlim(l1.max(), l1.min())
 	ax[0].legend(loc = (0.54, 0.02), frameon=False, borderpad=0.2, labelspacing=0.1)
 	ax[0].set_ylabel('  (deg)')
 	ax[0].text(-0.125, 0.35, 'b', va='center', ha='center', fontsize=20, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[0].transAxes, rotation=90)
@@ -182,7 +190,7 @@ if __name__ == '__main__':
 	lTickLabels = lTicks.astype(str)
 	lTickLabels[-1] = '  '+lTickLabels[-1]+' kpc'
 	upper.set_xticklabels(lTickLabels) # add kpc at the end
-	upper.set_xlim(l4.max(), l4.min())
+	upper.set_xlim(l1.max(), l1.min())
 
 
 	### plot residual
@@ -196,13 +204,13 @@ if __name__ == '__main__':
 	#lcen, lrms, bcen_res, brms_res = cal_zcen_zrms(ll_res, bb_res, weights=mass, binsize=-5, bin0=12.5)
 	ax[1].plot(lcen, bcen_res, '-', **arm_kws_bin)
 
-	# connect broken with dashed
+	### fill gap with dash
 	idx = np.isfinite(bcen)
-	ax[1].plot(lcen[idx], bcen_res[idx], '--', **arm_kws_bin)
+	#ax[1].plot(lcen[idx], bcen_res[idx], '--', **arm_kws_bin)
 
 	### plot H line
 	arm_kws_co1['zorder']=0
-	ax[1].plot([l4[0], l4[-1]], [0, 0], **arm_kws_co1)
+	ax[1].plot([l1[0], l1[-1]], [0, 0], **arm_kws_co1)
 
 	#ax[1].set_xlabel('Galactic Longitude (deg)', fontsize=15, fontweight='bold')#, fontfamily='Georgia', fontstyle='italic')
 	#ax[1].set_ylabel('Galactic Latitude (deg)     ', fontsize=15, fontweight='bold')
@@ -256,8 +264,8 @@ if __name__ == '__main__':
 		powerAxes.patch.set_alpha(0.0)
 
 
-	ax[0].text(-0.15, 1.0, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
-	ax[1].text(-0.15, 1.0, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
+	#ax[0].text(-0.15, 1.0, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#ax[1].text(-0.15, 1.0, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
 
 	plt.savefig('fig/out_warp_corrugation_b.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
 	plt.savefig('fig/out_warp_corrugation_b.png', bbox_inches='tight')

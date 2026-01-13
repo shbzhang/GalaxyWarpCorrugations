@@ -1,6 +1,5 @@
 ### plot Az-(Z-warp model) of MCs in different Rgal
 
-
 import numpy as np
 import pylab as pl
 import scipy.interpolate as sp_interp
@@ -10,11 +9,13 @@ from shared import *
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-
-comp=1
+suffix = ''#'_xf'
+comp = 1 #1,2
+ceph = 0
+ob = 0
 
 if __name__ == '__main__':
-	figscale = 0.8
+	figscale = 0.85
 	figwidth = textwidth*figscale
 	az_min, az_max = -30, 165
 
@@ -41,13 +42,13 @@ if __name__ == '__main__':
 	theta_axis = np.linspace(-30,170,200)
 
 	#fig1, ax = plt.subplots(nrows=2, ncols=5, sharex=False, sharey=True, figsize=(figwidth, figwidth*0.5))
-	fig, ax = plt.subplots(nrows=3, ncols=3, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.85))
-	plt.subplots_adjust(left=0.05, right=0.98, wspace=0, hspace=0.2)
+	fig, ax = plt.subplots(nrows=2, ncols=4, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.6))
+	plt.subplots_adjust(left=0.05, right=0.98, wspace=0, hspace=0.12)
 	lowerLeftIdx = ax[:-1].size
 	ax = ax.ravel()
 
 	#gr_sep = [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5, 20.5]
-	gr_sep = [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5]
+	gr_sep = [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5]#, 20.5]
 	for i in range(len(gr_sep)-1):
 		gr1, gr2 = gr_sep[i:i+2]
 		gr = (gr1 + gr2) / 2
@@ -60,24 +61,64 @@ if __name__ == '__main__':
 		s = ax[i].scatter(az[idx], zz[idx], s=scatter_size[idx]*5, **ring_kws_mc)
 
 		### plot binned average
-		azcen, azrms, zcen, zrms = bin_data(az[idx], zz[idx], mass[idx], grid=np.arange(160, -50, -3), width=6, method='gauss')
+		azcen, azrms, zcen, zrms = bin_data(az[idx], zz[idx], mass[idx], grid=np.arange(160, -50, -6), width=12, method='gauss')
 		#azcen, azrms, zcen, zrms, vcen, vrms, rcen, rrms = cal_zcen_zrms(az[idx], zz[idx], vv[idx], rr[idx], weights=mass[idx], binsize=6, binstep=3)
 
 		ax[i].plot(azcen, zcen, '-', **ring_kws_bin)
-		### fill gap
+		### fill gap with dash
 		idx = np.isfinite(zcen)
-		ax[i].plot(azcen[idx], zcen[idx], '--', **ring_kws_bin)
+		#ax[i].plot(azcen[idx], zcen[idx], '--', **ring_kws_bin)
 
 		### plot errorbar
 		ax[i].errorbar(azcen[idx], zcen[idx], yerr=zrms[idx]*2.355/2., fmt='^', c='#777777', markersize=0.05, elinewidth=1, capsize=1.1, zorder=15)
 
 		### plot H line
 		if comp==1:
+			ring_kws_co1['label'] = None
 			ring_kws_co1['zorder']=0
 			ax[i].plot([az_min, az_max], [0, 0], **ring_kws_co1)
 		else:
 			ring_kws_co2['zorder']=0
 			ax[i].plot([az_min, az_max], [0, 0], **ring_kws_co2)
+
+		### plot cepheids
+		if ceph:
+			ax[i].plot(azcen, zcen, '-', label='MWISP clouds', **ring_kws_bin)
+
+			subC = cepheid[(cepheid['r'] >= gr1) & (cepheid['r'] < gr2)]
+			subC['modelz'] = function_warp((subC['r'], subC['az']), p=p_1comp if comp==1 else p_2comp)
+			ax[i].scatter(subC['az'], subC['z']-subC['modelz'], s=8, c='orangered', alpha=0.8, zorder=200)
+			azcen, azrms, zcen, zrms = bin_data(subC['az'], subC['z']-subC['modelz'], np.ones(len(subC)), grid=np.arange(160, -50, -3), width=6, method='gauss', minbin=5)
+			ax[i].plot(azcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
+
+			subY = ygiant[(ygiant['r'] >= gr1) & (ygiant['r'] < gr2) & (np.abs(ygiant['z'])<1)]
+			subY['modelz'] = function_warp((subY['r'], subY['az']), p=p_1comp if comp==1 else p_2comp)
+			ax[i].scatter(subY['az'], subY['z']-subY['modelz'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
+			azcen, azrms, zcen, zrms = bin_data(subY['az'], subY['z']-subY['modelz'], np.ones(len(subY)), grid=np.arange(160, -50, -3), width=6, method='gauss', minbin=50)
+			ax[i].plot(azcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
+
+			if i in [3,4]:
+				from matplotlib.patches import FancyArrowPatch
+				ax[i].add_patch(FancyArrowPatch([38, -0.5], [38, -0.3], arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+				ax[i].add_patch(FancyArrowPatch([4,  -0.5], [4,  -0.3], arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+				ax[i].add_patch(FancyArrowPatch([-20,-0.5], [-20,-0.3], arrowstyle='-|>', mutation_scale=12, color='k', linewidth=3))
+			if i == len(ax)-1: ax[i].legend(frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=12)
+		elif ob:
+			starIdx = (starR >= gr1) & (starR < gr2)
+			starModelZ = function_warp((starR, starAz), p=p_1comp if comp==1 else p_2comp)
+			ax[i].scatter(starAz[starIdx], starZ[starIdx]-starModelZ[starIdx], s=3, c='orangered', zorder=9, alpha=0.3)#, **rad_kws_mc)
+			azcen, azrms, zcen, zrms = bin_data(starAz[starIdx], starZ[starIdx]-starModelZ[starIdx], np.ones(starIdx.sum()), grid=np.arange(160, -50, -6), width=6, method='gauss')
+			ax[i].plot(azcen, zcen, '-', color='darkred', zorder=200, alpha=0.8)
+
+		else:
+			### model
+			if i in [2,3,4,5]:
+				### sin component
+				raxis = np.full(400, gr)
+				phiaxis = np.linspace(-50, 180, 400)
+				zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], circ=p_circ1comp if comp==1 else p_circ2comp)
+				ax[i].plot(phiaxis, zaxis, **ring_kws_sin)
+
 
 		'''
 		### plot warp models
@@ -95,7 +136,7 @@ if __name__ == '__main__':
 		### plot gr text
 		text = '%i' % gr if gr%1==0 else '%.1f' % gr
 		if i==0: text += ' kpc'
-		ax[i].text(0.02, 0.95, text, transform=ax[i].transAxes, **ring_kws_text)
+		ax[i].text(0.02, 0.88, text, transform=ax[i].transAxes, **ring_kws_text)
 
 		### axes
 		ax[i].set_xticks(np.arange(-50, 200, 50))
@@ -113,6 +154,7 @@ if __name__ == '__main__':
 			ax[i].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
 
 
+
 		upper = ax[i].twiny()
 		upper.set_xticks(np.arange(0, 100, 20))
 		upper.set_xticks(np.arange(0, 100, 5), minor=True)
@@ -124,15 +166,14 @@ if __name__ == '__main__':
 		if i==2: xticklabels[1] = '20 kpc'
 		elif i==3: xticklabels[2] = '40   '
 		elif i==5: xticklabels[2] = '40 kpc'
-		elif i==8: xticklabels[3] = '60 kpc'
+		elif i==8: xticklabels[3] = '60 kpc   '
 		#if i<2: upper.set_xticklabels(['  0', '20', None, None, None]) # avoid overlap
 		#elif i==2: upper.set_xticklabels(['  0', '20 kpc', None, None, None]) # avoid overlap
 		#elif i==3: upper.set_xticklabels(['  0', '20', '40   ', None, None]) # add kpc at the end
 		#elif i<8: upper.set_xticklabels(['  0', '20', '40', None, None]) # add kpc at the end
 		#elif i==8: upper.set_xticklabels(['  0', '20', '40', '60 kpc', None]) # add kpc at the end
 		upper.set_xticklabels(xticklabels)
-		upper.tick_params(axis='x', which='major', pad=2)
-
+		upper.tick_params(axis='x', which='major', pad=-24, length=5)
 
 
 		'''
@@ -181,13 +222,17 @@ if __name__ == '__main__':
 		elif i==9: upper.set_xticklabels(['  0', '20', '40', '60 kpc', None]) # add kpc at the end
 		#if i==9: ax[i].legend()
 		'''
-	if comp==1:
-		ax[0].text(-0.2, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
-	else:
-		ax[0].text(-0.2, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#if comp==1:
+	#	ax[0].text(-0.2, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#else:
+	#	ax[0].text(-0.2, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
-	fig.savefig('fig/az_z_warp_resi_%icomp.%s' % (comp, mpl.rcParams['savefig.format']), bbox_inches='tight')
-	fig.savefig('fig/az_z_warp_resi_%icomp.png' % (comp), bbox_inches='tight')
+
+	if ceph: bn = 'fig/az_dz_MC_Ceph_%icomp%s' % (comp, suffix)
+	elif ob: bn = 'fig/az_dz_MC_OB_%icomp%s' % (comp, suffix)
+	else: bn = 'fig/az_dz_MC_%icomp%s' % (comp, suffix)
+	fig.savefig(bn+'.pdf', bbox_inches='tight')
+	fig.savefig(bn+'.png', bbox_inches='tight', transparent=False)
 	plt.show()
 
 

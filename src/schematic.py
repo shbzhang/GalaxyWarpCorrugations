@@ -216,28 +216,28 @@ plotter.add_lines(np.array([[8,-4.2,0.3], [8,-4.2,8]]), color='w', width=3)
 plotter.add_lines(np.array([[14,0,5.9], [14,0,8]]), color='w', width=3)
 plotter.add_lines(np.array([[8.5,12,3], [8.5,12,8]]), color='w', width=3)
 if not html:
-	plotter.add_point_labels([[8,-4.2,8]], ['Outer Arm\nCorrugation'], font_size=40, text_color='w', shape=False)
+	plotter.add_point_labels([[8,-4.2,8]], ['Slice along\nOuter Arm'], font_size=40, text_color='w', shape=False)
 	plotter.add_point_labels([[14,0,8]], ['Warp'], font_size=40, text_color='w', shape=False)
-	plotter.add_point_labels([[8.5,12,8]], ['Bar-direction\nCorrugation'], font_size=40, text_color='w', shape=False)
+	plotter.add_point_labels([[8.5,12,8]], ['Slice along\nBar-direction'], font_size=40, text_color='w', shape=False)
 else:
-	text1 = pv.Text3D('Outer Arm\nCorrugation', depth=0.2)
+	text1 = pv.Text3D('Slice along\nOuter Arm', depth=0.0)
 	text1.scale(0.45, inplace=True)             # Font size
 	text1.rotate_z(-90, inplace=True)           # Rotate around Z
 	text1.rotate_y(-90, inplace=True)           # Rotate around Z
 	text1.translate([8, -4.2, 8+1], inplace=True)  # Position in 3D
-	plotter.add_mesh(text1, color='white')
-	text2 = pv.Text3D('Warp', depth=0.2)
+	plotter.add_mesh(text1, color='white', lighting=False)
+	text2 = pv.Text3D('Warp', depth=0.0)
 	text2.scale(0.45, inplace=True)             # Font size
 	text2.rotate_z(-90, inplace=True)           # Rotate around Z
 	text2.rotate_y(-90, inplace=True)           # Rotate around Z
 	text2.translate([14,0,8+0.5], inplace=True)  # Position in 3D
-	plotter.add_mesh(text2, color='white')
-	text3 = pv.Text3D('Bar-direction\nCorrugation', depth=0.2)
+	plotter.add_mesh(text2, color='white', lighting=False)
+	text3 = pv.Text3D('Slice along\nBar-direction', depth=0.0)
 	text3.scale(0.45, inplace=True)             # Font size
 	text3.rotate_z(-90, inplace=True)           # Rotate around Z
 	text3.rotate_y(-90, inplace=True)           # Rotate around Z
 	text3.translate([8.5,12,8+1], inplace=True)  # Position in 3D
-	plotter.add_mesh(text3, color='white')
+	plotter.add_mesh(text3, color='white', lighting=False)
 
 
 # setting

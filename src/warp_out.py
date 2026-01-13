@@ -7,8 +7,10 @@ from scipy.stats import norm
 import scipy.optimize as sp_opt
 from shared import *
 
+ceph = 0
+
 if __name__ == '__main__':
-	figscale = 0.8
+	figscale = 0.58
 	figwidth = textwidth*figscale
 
 	data = np.loadtxt('out_para.txt',comments='#')
@@ -38,31 +40,47 @@ if __name__ == '__main__':
 	ax[0].scatter(az, zz, s=scatter_size*5, **arm_kws_mc)
 	ax[0].text(0.02, 0.95, 'Outer', transform=ax[0].transAxes, **arm_kws_text)
 
-
-
 	### plot binned average
 	azcen, azrms, zcen, zrms = bin_data(az, zz, mass, grid=np.arange(160, -50, -2), width=4, method='gauss')
 	#azcen, azrms, zcen, zrms, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz, vv, rr, weights=mass, binsize=4)
+	if ceph: arm_kws_bin['label'] = 'MWISP Clouds'
 	ax[0].plot(azcen, zcen, '-', **arm_kws_bin)
 
-	# connect broken with dashed
+	### fill gap with dash
 	idx = np.isfinite(zcen)
-	ax[0].plot(azcen[idx], zcen[idx], '--', **arm_kws_bin)
+	#ax[0].plot(azcen[idx], zcen[idx], '--', **arm_kws_bin)
 
+	if ceph:
+		subC = cepheid[arm_mask(cepheid['az'], cepheid['r'])]
+		ax[0].scatter(subC['az'], subC['z'], s=8, c='orangered', alpha=0.8, zorder=200)
+		azcen, azrms, zcen, zrms = bin_data(subC['az'], subC['z'], np.ones(len(subC)), grid=np.arange(160, -50, -2), width=4, method='gauss', minbin=5)
+		ax[0].plot(azcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
+
+		subY = ygiant[arm_mask(ygiant['az'], ygiant['r']) & (np.abs(ygiant['z'])<1)]
+		ax[0].scatter(subY['az'], subY['z'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
+		azcen, azrms, zcen, zrms = bin_data(subY['az'], subY['z'], np.ones(len(subY)), grid=np.arange(160, -50, -2), width=4, method='gauss', minbin=50)
+		ax[0].plot(azcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
 	### plot warp models
-	zh = cal_warp(R, PHI)
+	zh = cal_warp_HI(R, PHI)
 	ax[0].plot(PHI, zh, **arm_kws_hi)
 
-	z1, z2, z4, z5 =  cal_warpc(R, PHI)
-	ax[0].plot(PHI, z1, **arm_kws_ceph) #Chen b=1')
-	ax[0].plot(PHI, z4, **arm_kws_co1)
-	ax[0].plot(PHI, z5, **arm_kws_co2)
+	# cepheids
+	zwc, _ = cal_warp_Ceph(R, PHI)	#b=1 model
+	ax[0].plot(PHI, zwc, **arm_kws_ceph)
+	# khanna
+	#zwk = cal_warp_RC(R, PHI)
+	#ax[0].plot(PHI, zwk, **arm_kws_rc)
 
-	ax[0].legend(loc='upper right', frameon=False, borderpad=0.2, labelspacing=0.1)
+	# CO
+	zw1, zw2=cal_warp_MWSIP(R, PHI)
+	ax[0].plot(PHI, zw1, **arm_kws_co1)
+	ax[0].plot(PHI, zw2, **arm_kws_co2)
+
+	if not ceph: ax[0].legend(loc='upper right', frameon=False, borderpad=0.2, labelspacing=0.1)
 	ax[0].set_yticks(np.arange(-3, 3, 0.5))
 	ax[0].set_xlim(azmin, azmax)
 	ax[0].set_ylim(-0.6, 0.8)
-	ax[0].set_ylabel('Z (kpc)')
+	ax[0].set_ylabel('Z (kpc)', labelpad=-9)
 
 	#ax[0].tick_params(right=True, direction='in', labelsize=12)#, labelsize=1000/self.dpi)
 	#ax[0].tick_params(which='minor', right=True, direction='in')#, labelsize=1000/self.dpi)
@@ -97,26 +115,39 @@ if __name__ == '__main__':
 	zz_res = zz - function_warp( (function_arm(az, best_out), az) )
 	ax[1].scatter(az, zz_res, s=scatter_size*5, **arm_kws_mc)
 
-
 	### plot binned average
 	azcen, azrms, zcen_res, zrms_res = bin_data(az, zz_res, mass, grid=np.arange(160, -50, -2), width=4, method='gauss')
 	#azcen, azrms, zcen_res, zrms_res, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz_res, vv, rr, weights=mass, binsize=4)
 	ax[1].plot(azcen, zcen_res, '-', **arm_kws_bin)
 
-	### connect broken
+	### fill gap with dash
 	idx = np.isfinite(zcen_res)
-	ax[1].plot(azcen[idx], zcen_res[idx], '--', **arm_kws_bin)
+	#ax[1].plot(azcen[idx], zcen_res[idx], '--', **arm_kws_bin)
 
+	if ceph:
+		comp = 1
 
-	mi = mass < np.percentile(mass,50)
-	azcen, azrms, zcen_res, zrms_res = bin_data(az[mi], zz_res[mi], mass[mi], grid=np.arange(160, -50, -2), width=4, method='gauss')
-	#azcen, azrms, zcen_res, zrms_res, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz_res, vv, rr, weights=mass, binsize=4)
-	ax[1].plot(azcen, zcen_res, '-', color='r')
+		subC['modelz'] = function_warp((subC['r'], subC['az']), p=p_1comp if comp==1 else p_2comp)
+		ax[1].scatter(subC['az'], subC['z']-subC['modelz'], s=8, c='orangered', alpha=0.8, zorder=200)
+		azcen, azrms, zcen, zrms = bin_data(subC['az'], subC['z']-subC['modelz'], np.ones(len(subC)), grid=np.arange(160, -50, -2), width=4, method='gauss', minbin=5)
+		ax[1].plot(azcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
 
-	mi = mass >= np.percentile(mass, 50)
-	azcen, azrms, zcen_res, zrms_res = bin_data(az[mi], zz_res[mi], mass[mi], grid=np.arange(160, -50, -2), width=4, method='gauss')
-	#azcen, azrms, zcen_res, zrms_res, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz_res, vv, rr, weights=mass, binsize=4)
-	ax[1].plot(azcen, zcen_res, '-', color='g')
+		subY['modelz'] = function_warp((subY['r'], subY['az']), p=p_1comp if comp==1 else p_2comp)
+		ax[1].scatter(subY['az'], subY['z']-subY['modelz'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
+		azcen, azrms, zcen, zrms = bin_data(subY['az'], subY['z']-subY['modelz'], np.ones(len(subY)), grid=np.arange(160, -50, -2), width=4, method='gauss', minbin=50)
+		ax[1].plot(azcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
+	if 0:
+		### Are less massive clouds different?
+		mi = mass < np.percentile(mass,50)
+		azcen, azrms, zcen_res, zrms_res = bin_data(az[mi], zz_res[mi], mass[mi], grid=np.arange(160, -50, -2), width=4, method='gauss')
+		#azcen, azrms, zcen_res, zrms_res, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz_res, vv, rr, weights=mass, binsize=4)
+		ax[1].plot(azcen, zcen_res, '-', color='r')
+
+		### Are massive clouds different?
+		mi = mass >= np.percentile(mass, 50)
+		azcen, azrms, zcen_res, zrms_res = bin_data(az[mi], zz_res[mi], mass[mi], grid=np.arange(160, -50, -2), width=4, method='gauss')
+		#azcen, azrms, zcen_res, zrms_res, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz_res, vv, rr, weights=mass, binsize=4)
+		ax[1].plot(azcen, zcen_res, '-', color='g')
 
 	### plot H line
 	arm_kws_co1['zorder']=0
@@ -128,7 +159,7 @@ if __name__ == '__main__':
 	#ax[1].xticks([-25,0,25,50,75,100,125,150],['-25','0','25','50','75','100','125','150'],fontsize=14,fontweight=1.8)
 	ax[1].grid(True, ls='--', alpha=0.4)
 	ax[1].set_xlabel('Galactocentric Azimuth (deg)')
-	ax[1].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
+	ax[1].set_ylabel('$\mathbf{\Delta}$Z (kpc)', labelpad=-9)
 
 	#ax[1].tick_params(top=True, right=True, direction='in', labelsize=12)#, labelsize=1000/self.dpi)
 	#ax[1].tick_params(which='minor', top=True, right=True, direction='in')#, labelsize=1000/self.dpi)
@@ -139,13 +170,19 @@ if __name__ == '__main__':
 		ax[1].set_ylim([-0.5, 0.7])
 		### insert a power spectrum
 		#powerAxes = ax[1].inset_axes([0.21, 0.12, 0.21, 0.21])
-		powerAxes = ax[1].inset_axes([0.77, 0.76, 0.21, 0.21])
+		powerAxes = ax[1].inset_axes([0.76, 0.75, 0.21, 0.21])
 		from astropy.timeseries import LombScargle
 		f = sp_interp.interp1d(phiAxis, lenAxis, fill_value='extrapolate')
 		length = f(az)
 		ls = LombScargle(length, zz_res, dy=1/np.sqrt(mass), normalization='standard')
 		frequency, power = ls.autopower(minimum_frequency=1/50, maximum_frequency=1/1)
 		powerAxes.plot(frequency, power, color='#4169e1')
+
+		if ceph:
+			subC['length'] = f(subC['az'])
+			ls = LombScargle(subC['length'], subC['z']-subC['modelz'], dy=1, normalization='standard')
+			frequencyC, powerC = ls.autopower(minimum_frequency=1/50, maximum_frequency=1/1)
+			powerAxes.plot(frequencyC, powerC, color='darkred')
 
 		# Find the dominant period
 		peak = np.max(power)
@@ -161,20 +198,27 @@ if __name__ == '__main__':
 		#powerAxes.set_xscale('log')
 		powerAxes.set_xlim(0, 1)
 		powerAxes.set_ylim(-0.01, np.max(power)*1.4)
-		powerAxes.tick_params(top=False, right=False, pad=3)
-		powerAxes.tick_params(which='minor', top=False, right=False, pad=3)
-		powerAxes.set_xlabel('frequency (kpc$^{-1}$)', labelpad=-2)
-		powerAxes.set_ylabel('Norm\nPower', labelpad=0)
+		powerAxes.tick_params(top=False, right=False, pad=3, labelsize=16)
+		powerAxes.tick_params(which='minor', top=False, right=False, pad=3, labelsize=16)
+		powerAxes.set_xlabel('frequency (kpc$^{-1}$)', labelpad=-2, fontsize=16)
+		powerAxes.set_ylabel('Norm\nPower', labelpad=0, fontsize=16)
 		powerAxes.spines['top'].set_visible(False)
 		powerAxes.spines['right'].set_visible(False)
 		powerAxes.patch.set_alpha(0.0)
 
-
-	ax[0].text(-0.06, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
-	ax[1].text(-0.06, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
+	if ceph:
+		ax[0].text(-0.06, 1, 'c', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+		ax[1].text(-0.06, 1, 'd', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
+	else:
+		pass
+		#ax[0].text(-0.08, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+		#ax[1].text(-0.08, 1, 'c', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
 	
-	plt.savefig('fig/out_warp_corrugation.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
-	plt.savefig('fig/out_warp_corrugation.png', bbox_inches='tight')
+	if ceph: bn = 'fig/out_warp_corrugation_Ceph'
+	else: bn = 'fig/out_warp_corrugation'
+
+	plt.savefig(bn+'.pdf', bbox_inches='tight')
+	plt.savefig(bn+'.png', bbox_inches='tight', transparent=False)
 	plt.show()
 
 
@@ -230,7 +274,9 @@ if 0:
 	#ax[1].yaxis.set_visible(False)
 	ax[1].patch.set_alpha(0.0)
 
-
+	if ceph: bn = 'fig/r_dz_MC_Ceph_%icomp%s_single' % (comp, suffix)
+	elif ob: bn = 'fig/r_dz_MC_OB_%icomp%s_single' % (comp, suffix)
+	else: bn = 'fig/r_dz_MC_%icomp%s_single' % (comp, suffix)
 	plt.savefig('fig/out_corrugation_power.%s' % (comp, mpl.rcParams['savefig.format']), bbox_inches='tight')
 	plt.show()
 '''

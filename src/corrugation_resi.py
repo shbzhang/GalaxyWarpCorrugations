@@ -10,8 +10,10 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-comp = 1
 suffix = ''#'_xf'
+comp = 2
+ceph = 0
+ob = 0
 
 if __name__ == '__main__':
 	figscale = 0.85
@@ -47,7 +49,8 @@ if __name__ == '__main__':
 	plt.subplots_adjust(left=0.05, right=0.98, wspace=0, hspace=0)
 	ax = ax.ravel()
 
-	theta_sep = [155, 143, 131, 119,107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]
+	#theta_sep = [155, 143, 131, 119,107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]
+	theta_sep = rad_sep
 	sep = -1
 	for i in range(len(theta_sep)-2):
 		### skip 11 ~ -11
@@ -73,6 +76,33 @@ if __name__ == '__main__':
 		ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., **rad_kws_err)
 		#ax[i].plot(rcen, zcen, '-', color=darker_hex(col_mc), lw=2, alpha=0.8, zorder=10)
 
+		if ceph:
+			subC = cepheid[(cepheid['az'] >= theta2) & (cepheid['az'] < theta1)]
+			subC['modelz'] = function_warp((subC['r'], subC['az']), p=p_1comp if comp==1 else p_2comp)
+			ax[i].scatter(subC['r'], subC['z']-subC['modelz'], s=8, c='orangered', alpha=0.8, zorder=200)
+			rcen, rrms, zcen, zrms = bin_data(subC['r'], subC['z']-subC['modelz'], np.ones(len(subC)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=5)
+			ax[i].plot(rcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
+
+			subY = ygiant[(ygiant['az'] >= theta2) & (ygiant['az'] < theta1) & (np.abs(ygiant['z'])<1)]
+			subY['modelz'] = function_warp((subY['r'], subY['az']), p=p_1comp if comp==1 else p_2comp)
+			ax[i].scatter(subY['r'], subY['z']-subY['modelz'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
+			rcen, rrms, zcen, zrms = bin_data(subY['r'], subY['z']-subY['modelz'], np.ones(len(subY)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=50)
+			ax[i].plot(rcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
+
+		elif ob:
+			starIdx = (starAz >= theta2) & (starAz < theta1)
+			starModelZ = function_warp((starR, starAz), p=p_1comp if comp==1 else p_2comp)
+			ax[i].scatter(starR[starIdx], starZ[starIdx]-starModelZ[starIdx], s=1, c='red', alpha=0.4, zorder=200)
+			rcen, rrms, zcen, zrms = bin_data(starR[starIdx], starZ[starIdx]-starModelZ[starIdx], np.ones(starIdx.sum()), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=5)
+			ax[i].plot(rcen, zcen, '.-', color='darkred', zorder=200)
+		else:
+			if i in [0,1, 3,4, 7,8,9,10,11, 13, 14]:
+				### sin component
+				raxis = np.linspace(0,30,200)
+				phiaxis = np.full(200, theta)
+				zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], rad=p_rad1comp if comp==1 else p_rad2comp)
+				ax[i].plot(raxis, zaxis, **rad_kws_sin)
+
 		### plot h line
 		if comp==1:
 			rad_kws_co1['zorder']=0
@@ -97,11 +127,6 @@ if __name__ == '__main__':
 
 
 		if i == 10:
-			### sin component
-			raxis = np.linspace(0,30,200)
-			phiaxis = np.repeat(34, 200)
-			zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], sin=p_sin1comp if comp==1 else p_sin2comp)
-			ax[i].plot(raxis, zaxis, **rad_kws_sin)
 			### arm labels
 			ax[i].plot([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
 			for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], ['      Perseus', '    Outer', '  OSC']):
@@ -115,13 +140,16 @@ if __name__ == '__main__':
 			ax[i].set_xticklabels(xtk) # add kpc at the end
 		#if i == 14: ax[i].legend()
 
-		ax[i].set_xlim(8, 21.5)
+		ax[i].set_xlim(8, 19)
 		ax[i].set_ylim(-0.8, 0.8)
 
-	ax[0].text(-0.25, 0.9, 'a' if comp==1 else 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#ax[0].text(-0.25, 0.9, 'a' if comp==1 else 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
-	fig.savefig('fig/r_z_corrugation_resi_%icomp%s.%s' % (comp, suffix, mpl.rcParams['savefig.format']), bbox_inches='tight')
-	fig.savefig('fig/r_z_corrugation_resi_%icomp%s.png' % (comp, suffix), bbox_inches='tight')
+	if ceph: bn = 'fig/r_dz_MC_Ceph_%icomp%s' % (comp, suffix)
+	elif ob: bn = 'fig/r_dz_MC_OB_%icomp%s' % (comp, suffix)
+	else: bn = 'fig/r_dz_MC_%icomp%s' % (comp, suffix)
+	fig.savefig(bn+'.pdf', bbox_inches='tight')
+	fig.savefig(bn+'.png', bbox_inches='tight', transparent=False)
 	plt.show()
 
 '''

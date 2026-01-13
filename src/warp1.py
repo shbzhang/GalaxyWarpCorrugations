@@ -10,10 +10,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 suffix = ''#'_xf'
-ob = True
+ceph = 0
+ob = 0
 
 if __name__ == '__main__':
-	figscale = 0.5
+	figscale = 0.85 if ceph else 0.5
 	figwidth = textwidth*figscale
 	az_min, az_max = -40 if ob else -30, 166
 
@@ -41,8 +42,8 @@ if __name__ == '__main__':
 	theta_axis = np.linspace(-90,180,200)
 
 	#fig, ax = plt.subplots(nrows=2, ncols=5, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.5))
-	fig, ax = plt.subplots(nrows=3, ncols=3, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.87))
-	plt.subplots_adjust(left=0.11, right=0.97, top=0.95, wspace=0, hspace=0.2)
+	fig, ax = plt.subplots(nrows=3, ncols=3, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.85))
+	plt.subplots_adjust(left=0.11, right=0.97, top=0.95, wspace=0, hspace=0.12)
 	lowerLeftIdx = ax[:-1].size
 	ax = ax.ravel()
 
@@ -59,12 +60,8 @@ if __name__ == '__main__':
 		### plot scatter
 		ax[i].scatter(az[idx], zz[idx], s=scatter_size[idx]*2, **ring_kws_mc)
 
-		if ob:
-			starIdx = (starR >= gr1) & (starR < gr2)
-			ax[i].scatter(starAz[starIdx], starZ[starIdx], s=1, c='red', zorder=9)#, **rad_kws_mc)
-
 		### plot binned average
-		azcen, azrms, zcen, zrms = bin_data(az[idx], zz[idx], mass[idx], grid=np.arange(160, -50, -3), width=6, method='gauss')
+		azcen, azrms, zcen, zrms = bin_data(az[idx], zz[idx], mass[idx], grid=np.arange(160, -50, -6), width=12, method='gauss')
 		#azcen, azrms, zcen, zrms, vcen, vrms, rcen, rrms = cal_zcen_zrms(az[idx], zz[idx], vv[idx], rr[idx], weights=mass[idx], binsize = 6, binstep = 3)
 
 		# i think there is no need to fill gap with interpolating, just plot the binned average
@@ -76,31 +73,67 @@ if __name__ == '__main__':
 		bin_val = f(bin_axis)
 		'''
 		ax[i].plot(azcen, zcen, '-', **ring_kws_bin)
-		### fill gap
+
+		### fill gap with dash
 		idx = np.isfinite(zcen)
-		ax[i].plot(azcen[idx], zcen[idx], '--', **ring_kws_bin)
+		### only fill short gap
+		gap = ~idx
+		gap = gap & np.roll(gap, 1)# & np.roll(gap, 2)# & np.roll(gap, 3)
+		gap = gap | np.roll(gap, -1)# | np.roll(gap, -2)# | np.roll(gap, -3)
+		_idx = idx | gap
+		ax[i].plot(azcen[_idx], zcen[_idx], linestyle='--', **ring_kws_bin)
+
+		### Cepheids, check why they have higher Z than clouds
+		if ceph:
+			ax[i].plot(azcen, zcen, '-', label='MWISP clouds', **ring_kws_bin)
+
+			subC = cepheid[(cepheid['r'] >= gr1) & (cepheid['r'] < gr2)]
+			ax[i].scatter(subC['az'], subC['z'], s=15, facecolor='orangered', edgecolor='none', alpha=0.6, zorder=200)
+			azcen, azrms, zcen, zrms = bin_data(subC['az'], subC['z'], np.ones(len(subC)), grid=np.arange(160, -50, -3), width=6, method='gauss', minbin=5)
+			ax[i].plot(azcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
+			'''
+			subY = ygiant[(ygiant['r'] >= gr1) & (ygiant['r'] < gr2) & (np.abs(ygiant['z'])<1)]
+			ax[i].scatter(subY['az'], subY['z'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
+			azcen, azrms, zcen, zrms = bin_data(subY['az'], subY['z'], np.ones(len(subY)), grid=np.arange(160, -50, -3), width=6, method='gauss', minbin=50)
+			ax[i].plot(azcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
+			'''
+			if i==len(ax)-1: ax[i].legend(frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=12)
+		elif ob:
+			starIdx = (starR >= gr1) & (starR < gr2)
+			ax[i].scatter(starAz[starIdx], starZ[starIdx], s=1, c='orangered', zorder=200, alpha=0.3)#, **rad_kws_mc)
+			azcen, azrms, zcen, zrms = bin_data(starAz[starIdx], starZ[starIdx], np.ones(starIdx.sum()), grid=np.arange(160, -50, -6), width=6, method='gauss')
+			ax[i].plot(azcen, zcen, '-', color='darkred', zorder=200, alpha=0.8)
+
 
 		### plot warp models
 		# HI
 		if i>0:
-			w = cal_warp(gr, theta_axis)
-			ax[i].plot(theta_axis, w, **ring_kws_hi)
-		# cepheids, co
-		zw1, zw2, zw4, zw5=cal_warpc(gr, theta_axis)
-		ax[i].plot(theta_axis, zw1, **ring_kws_ceph)
-		ax[i].plot(theta_axis, zw4, **ring_kws_co1)
-		ax[i].plot(theta_axis, zw5, **ring_kws_co2)
+			zwh = cal_warp_HI(gr, theta_axis)
+			ax[i].plot(theta_axis, zwh, **ring_kws_hi)
+		# cepheids
+		zwc, _ = cal_warp_Ceph(gr, theta_axis)	#b=1 model
+		ax[i].plot(theta_axis, zwc, **ring_kws_ceph)
+		# khanna
+		#zwk = cal_warp_RC(gr, theta_axis)
+		#ax[i].plot(theta_axis, zwk, **ring_kws_rc)
+
+		# CO
+		zw1, zw2=cal_warp_MWSIP(gr, theta_axis)
+		ax[i].plot(theta_axis, zw1, **ring_kws_co1)
+		ax[i].plot(theta_axis, zw2, **ring_kws_co2)
 
 		### plot gr text
 		text = '%i' % gr if gr%1==0 else '%.1f' % gr
 		if i==0: text += ' kpc'
-		ax[i].text(0.02, 0.95, text, transform=ax[i].transAxes, **ring_kws_text)
+		ax[i].text(0.02, 0.85, text, transform=ax[i].transAxes, **ring_kws_text)
 
 		### axes
 		ax[i].set_xticks(np.arange(-50, 200, 50))
 		ax[i].set_yticks(np.arange(-3, 3, 0.5))
 		ax[i].set_xlim(az_min, az_max)
 		ax[i].set_ylim([-0.8, 1.4])
+		ax[i].tick_params(axis='x', which='major', length=5, width=1.2)
+		ax[i].tick_params(axis='x', which='minor', length=3, width=1.2)
 
 		if i >= lowerLeftIdx:
 			ax[i].set_xticklabels(['%i' % i for i in np.arange(-50, 200, 50)])
@@ -117,35 +150,28 @@ if __name__ == '__main__':
 		upper.set_xlim(0, radius)
 
 		### slightly shift upper ticklabel position to avoid overlap
-		#if i<=2: upper.set_xticklabels(['  0', '20', None, None, None]) # avoid overlap
-		#elif i==3: upper.set_xticklabels(['  0', '20', '40    ', None, None]) # avoid overlap
-		#elif i==4: upper.set_xticklabels(['   0', '20', '40 kpc', None, None]) # add kpc at the end
-		#elif i<=8: upper.set_xticklabels(['  0', '20', '40', None, None]) # add kpc at the end
-		#elif i==9: upper.set_xticklabels(['  0', '20', '40', '60 kpc', None]) # add kpc at the end
 		xticklabels = upper.get_xticklabels()
-		xticklabels[0] = '  0'
-		if i==2: xticklabels[1] = '20 kpc'
-		elif i==3: xticklabels[2] = '40   ' if ob else '40    '
-		elif i==5: xticklabels[2] = '40 kpc'
-		elif i==8: xticklabels[3] = '60 kpc'
-		#if i<2: upper.set_xticklabels(['  0', '20', None, None, None]) # avoid overlap
-		#elif i==2: upper.set_xticklabels(['  0', '20 kpc', None, None, None]) # avoid overlap
-		#elif i==3: upper.set_xticklabels(['  0', '20', '40   ', None, None]) # add kpc at the end
-		#elif i<8: upper.set_xticklabels(['  0', '20', '40', None, None]) # add kpc at the end
-		#elif i==8: upper.set_xticklabels(['  0', '20', '40', '60 kpc', None]) # add kpc at the end
-		upper.set_xticklabels(xticklabels)
-		upper.tick_params(axis='x', which='major', pad=2)
+		xticklabels[0] = '   0'
+		if i==2: xticklabels[1] = ' 20 kpc'
+		elif i==3: xticklabels[2] = '40  ' if ob else '40   '
+		elif i==5: xticklabels[2] = ' 40 kpc'
+		elif i==8: xticklabels[3] = '60 kpc     '
+		upper.set_xticklabels(xticklabels, fontsize=14)
+		upper.tick_params(axis='x', which='major', pad=-18, length=5)
 
 		### legend in the last panel
-		if i==len(ax)-1: ax[i].legend(loc=[0.32, 0], handletextpad=0.2, frameon=False, borderpad=0.2, labelspacing=0.1)
+		if (not ceph) and (i==len(ax)-1): ax[i].legend(loc=[0.35, 0.01], handletextpad=0.2, frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=14)
 
 	### panel ID
-	if not ob:
-		ax[0].text(-0.30, 0.94, 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#if not ceph:
+		#ax[0].text(-0.30, 0.94, 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
 
-	fig.savefig('fig/az_z_warp%s%s.%s' % (suffix, '_OB' if ob else '', mpl.rcParams['savefig.format']), bbox_inches='tight')
-	fig.savefig('fig/az_z_warp%s%s.png' % (suffix, '_OB' if ob else ''), bbox_inches='tight')
+	if ceph: bn = 'fig/az_z_MC_Ceph%s' % suffix
+	elif ob: bn = 'fig/az_z_MC_OB%s' % suffix
+	else: bn = 'fig/az_z_MC%s' % suffix
+	fig.savefig(bn+'.pdf', bbox_inches='tight')
+	fig.savefig(bn+'.png', bbox_inches='tight', transparent=False)
 	plt.show()
 
 '''

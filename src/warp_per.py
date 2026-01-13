@@ -44,18 +44,25 @@ if __name__ == '__main__':
 	#azcen, azrms, zcen, zrms, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz, vv, rr, weights=mass, binsize=4)
 	ax[0].plot(azcen, zcen, '-', **arm_kws_bin)
 
-	# connect broken with dashed
+	### fill gap with dash
 	idx = np.isfinite(zcen)
-	ax[0].plot(azcen[idx], zcen[idx], '--', **arm_kws_bin)
+	#ax[0].plot(azcen[idx], zcen[idx], '--', **arm_kws_bin)
 
 	### plot warp models
-	zh = cal_warp(R, PHI)
+	zh = cal_warp_HI(R, PHI)
 	ax[0].plot(PHI, zh, **arm_kws_hi)
 
-	z1, z2, z4, z5 =  cal_warpc(R, PHI)
-	ax[0].plot(PHI, z1, **arm_kws_ceph) #Chen b=1')
-	ax[0].plot(PHI, z4, **arm_kws_co1)
-	ax[0].plot(PHI, z5, **arm_kws_co2)
+	# cepheids
+	zwc, _ = cal_warp_Ceph(R, PHI)	#b=1 model
+	ax[0].plot(PHI, zwc, **arm_kws_ceph)
+	# khanna
+	#zwk = cal_warp_RC(R, PHI)
+	#ax[0].plot(PHI, zwk, **arm_kws_rc)
+
+	# CO
+	zw1, zw2=cal_warp_MWSIP(R, PHI)
+	ax[0].plot(PHI, zw1, **arm_kws_co1)
+	ax[0].plot(PHI, zw2, **arm_kws_co2)
 
 	ax[0].legend(frameon=False, borderpad=0.2, labelspacing=0.1)
 	ax[0].set_yticks(np.arange(-3, 3, 0.2))
@@ -96,9 +103,9 @@ if __name__ == '__main__':
 	#azcen, azrms, zcen_res, zrms_res, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz_res, vv, rr, weights=mass, binsize=3.5)
 	ax[1].plot(azcen, zcen_res, '-', **arm_kws_bin)
 
-	### connect broken
+	### fill gap with dash
 	idx = np.isfinite(zcen_res)
-	ax[1].plot(azcen[idx], zcen_res[idx], '--', **arm_kws_bin)
+	#ax[1].plot(azcen[idx], zcen_res[idx], '--', **arm_kws_bin)
 
 	### plot H line
 	arm_kws_co1['zorder']=0

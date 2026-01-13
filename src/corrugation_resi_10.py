@@ -10,11 +10,14 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-comp = 1
 suffix = ''#'_xf'
+comp = 1
+ceph = 0
+yg = 0
+ob = 0
 
 if __name__ == '__main__':
-	figscale = 0.38
+	figscale = 0.47
 	figwidth = textwidth*figscale
 
 	out_data = np.loadtxt('out_para%s.txt' % suffix, comments='#')
@@ -40,14 +43,12 @@ if __name__ == '__main__':
 	scatter_size, scatter_color = mass_distribute(mass)
 	gr_axis = np.linspace(7.5, 22, 200)
 
-	fig, ax = plt.subplots(figsize=(figwidth, figwidth*0.7))
+	fig, ax = plt.subplots(figsize=(figwidth, figwidth*0.68))
 	plt.subplots_adjust(left=0.15, right=0.95, bottom=0.13, top=0.92, wspace=0, hspace=0)
+	ax.set_autoscale_on(False)
 
 
-
-
-
-	theta_sep = [155, 143, 131, 119,107, 95, 83, 71, 59, 47, 38, 29, 20, 11, -11, -17, -27]
+	theta_sep = [155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 10, -7, -16, -27]
 	sep = -1
 	for i in range(len(theta_sep)-2):
 		### skip 11 ~ -11
@@ -55,7 +56,6 @@ if __name__ == '__main__':
 		else: sep += 1
 		theta1, theta2 = theta_sep[sep:sep+2]
 		theta = (theta1+theta2)/2
-
 		### filter theta
 		idx = (az >= theta2) & (az < theta1)
 
@@ -67,8 +67,38 @@ if __name__ == '__main__':
 		### plot binned average and errorbar
 		rcen, rrms, zcen, zrms = bin_data(rr[idx], zz[idx], mass[idx], grid=np.arange(8.15 if i<5 else 8, 30, 1), width=1, method='gauss')
 		#rcen, rrms, zcen, zrms = cal_zcen_zrms(rr[idx], zz[idx], weights=mass[idx], binsize=-1, bin0=8.15 if i<5 else 8)
+		if ceph: ax.plot(rcen, zcen, '-', color='#2074b0', linewidth=2.5, label='MWISP Clouds', zorder=198)
 		ax.errorbar(rcen, zcen, yerr=zrms*2.355/2., **rad_kws_err)
 		#ax.plot(rcen, zcen, '-', color=darker_hex(col_mc), lw=2, alpha=0.8, zorder=10)
+
+		if ceph:
+			subC = cepheid[(cepheid['az'] >= theta2) & (cepheid['az'] < theta1)]
+			subC['modelz'] = function_warp((subC['r'], subC['az']), p=p_1comp if comp==1 else p_2comp)
+			ax.scatter(subC['r'], subC['z']-subC['modelz'], s=8, c='orangered', alpha=0.8, zorder=200)
+			rcen, rrms, zcen, zrms = bin_data(subC['r'], subC['z']-subC['modelz'], np.ones(len(subC)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=5)
+			ax.plot(rcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
+		if yg:
+			subY = ygiant[(ygiant['az'] >= theta2) & (ygiant['az'] < theta1) & (np.abs(ygiant['z'])<1)]
+			subY['modelz'] = function_warp((subY['r'], subY['az']), p=p_1comp if comp==1 else p_2comp)
+			#ax.scatter(subY['r'], subY['z']-subY['modelz'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
+			ax.scatter(subY['r'], subY['z']-subY['modelz'], s=10, facecolor='orangered', edgecolor='k', alpha=0.2, zorder=0)
+			rcen, rrms, zcen, zrms = bin_data(subY['r'], subY['z']-subY['modelz'], np.ones(len(subY)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=50)
+			#ax.plot(rcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
+
+			#ax.legend(frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=12)
+		elif ob:
+			starIdx = (starAz >= theta2) & (starAz < theta1)
+			starModelZ = function_warp((starR, starAz), p=p_1comp if comp==1 else p_2comp)
+			ax.scatter(starR[starIdx], starZ[starIdx]-starModelZ[starIdx], s=3, c='red', alpha=0.4, zorder=200)
+			rcen, rrms, zcen, zrms = bin_data(starR[starIdx], starZ[starIdx]-starModelZ[starIdx], np.ones(starIdx.sum()), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=5)
+			ax.plot(rcen, zcen, '.-', color='darkred', zorder=200)
+		else:
+			if i == 10:
+				### sin component
+				raxis = np.linspace(0,19,200)
+				phiaxis = np.repeat(33.5, 200)
+				zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], rad=p_rad1comp if comp==1 else p_rad2comp)
+				ax.plot(raxis, zaxis, **rad_kws_sin)
 
 		### plot h line
 		if comp==1:
@@ -93,31 +123,33 @@ if __name__ == '__main__':
 
 
 		if i == 10:
-			### sin component
-			raxis = np.linspace(0,30,200)
-			phiaxis = np.repeat(34, 200)
-			zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], sin=p_sin1comp if comp==1 else p_sin2comp)
-			ax.plot(raxis, zaxis, **rad_kws_sin)
 			### arm labels
-			ax.plot([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
-			for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], ['   Perseus', '  Outer', '  OSC']):
-				ax.text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
+			#ax.plot([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
+			#for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], ['   Perseus', '  Outer', '  OSC']):
+			#	ax.text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
 			### label
 			ax.set_xlabel('R (kpc)')
-			ax.set_ylabel('$\mathbf{\Delta}$Z (kpc)')
+			ax.set_ylabel('$\mathbf{\Delta}$Z (kpc)', labelpad=-10)
 		#if i>=10:
 		#	xtk = ax.get_xticks().astype(str)
 		#	xtk[2] = '  '+xtk[2]	#shift '8' a little right
 		#	ax.set_xticklabels(xtk) # add kpc at the end
 		#if i == 14: ax.legend()
 
-		ax.set_xlim(8, 21.5)
-		ax.set_ylim(-0.7, 0.7)
+		ax.set_xlim(8, 19)#1.5)
+		ax.set_ylim(-0.6, 0.6)
 
-	ax.text(-0.1, 0.95, 'c' if comp==1 else 'd', color='black', font=subfigureIndexFont, transform=ax.transAxes)
+	if comp==1:
+		if ceph: subfigureIndex = 'b'
+		else: subfigureIndex = 'c'
+	else: subfigureIndex = 'd'
+	#ax.text(-0.1, 0.95, subfigureIndex, color='black', font=subfigureIndexFont, transform=ax.transAxes)
 
-	fig.savefig('fig/r_z_corrugation_resi_single_%icomp%s.%s' % (comp, suffix, mpl.rcParams['savefig.format']))#, bbox_inches='tight')
-	fig.savefig('fig/r_z_corrugation_resi_single_%icomp%s.png' % (comp, suffix))#, bbox_inches='tight')
+	if ceph: bn = 'fig/r_dz_MC_Ceph_%icomp%s_single' % (comp, suffix)
+	elif ob: bn = 'fig/r_dz_MC_OB_%icomp%s_single' % (comp, suffix)
+	else: bn = 'fig/r_dz_MC_%icomp%s_single' % (comp, suffix)
+	fig.savefig(bn+'.pdf', bbox_inches='tight')
+	fig.savefig(bn+'.png', bbox_inches='tight', transparent=False)
 	plt.show()
 
 '''
