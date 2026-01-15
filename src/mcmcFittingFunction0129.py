@@ -589,7 +589,7 @@ if __name__ == '__main__':
 		'''
 
 	###run MCMC
-	if 0:
+	if 1:
 		sampler, pos, prob, state = main(data)
 		#samples = sampler.flatchain
 		steps = sampler.flatchain
@@ -661,7 +661,7 @@ if __name__ == '__main__':
 
 
 	### corner plot
-	if 0:
+	if 1:
 		from shared import textwidth, subfigureIndexFont
 		figscale = 0.6 if not sin else 0.45
 		figwidth = textwidth*figscale
@@ -2254,7 +2254,7 @@ if __name__ == '__main__':
 			fig.write_html("fig/median_model_%icomp.html" % component)#, scale=3)
 
 
-	if 1 and sin:
+	if 0 and sin:
 		figscale = 1
 		fontscale = 1.3
 
