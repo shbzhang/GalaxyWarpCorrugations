@@ -45,20 +45,6 @@ created by `src/mcmcFittingFunction0129.py` with `component=2` and `sin=False`
 
 ---
 
-### 📌 Corrugated Galactic CO disk after subtraction of the m = 1 CO warp model, replaced by 2-dimensional face-on image in Figure 2a.
-created by `src/mcmcFittingFunction0129.py` with `component=1` and `sin=True`
-
-[![Figure 2a](dZ_1comp.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/dZ_1comp.html)
-
----
-
-### 📌 Corrugated Galactic CO disk after subtraction of the m = 1, 2 CO warp model, replaced by 2-dimensional face-on image in Extended Data Figure 3.
-created by `src/mcmcFittingFunction0129.py` with `component=2` and `sin=True`
-
-[![ED Figure 2](dZ_2comp.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/dZ_2comp.html)
-
----
-
 ### 📌 Figure 4: A schematic three-dimensional view of the Milky Way.
 created by `src/schematic.py`
 
