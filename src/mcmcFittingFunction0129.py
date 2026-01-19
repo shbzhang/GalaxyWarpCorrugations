@@ -589,7 +589,7 @@ if __name__ == '__main__':
 		'''
 
 	###run MCMC
-	if 1:
+	if 0:
 		sampler, pos, prob, state = main(data)
 		#samples = sampler.flatchain
 		steps = sampler.flatchain
@@ -661,7 +661,7 @@ if __name__ == '__main__':
 
 
 	### corner plot
-	if 1:
+	if 0:
 		from shared import textwidth, subfigureIndexFont
 		figscale = 0.6 if not sin else 0.45
 		figwidth = textwidth*figscale
@@ -916,8 +916,6 @@ if __name__ == '__main__':
 			colorbar_kws={'rect':[0.28, 0.2, 0.02, 0.22], 'orientation':'vertical'}, **kws):
 
 			if im is None:
-				step = 0.25
-
 				# if sin==False, use convolveZonGrid(X, Y, Z-Z_w, mass, ....
 				from shared import function_warp, p_1comp, p_2comp, subfigureIndexFont, function_PoggioWarp
 				#Z_w = function_warp((R,PHI), p=p_1comp if component==1 else p_2comp)
@@ -1363,7 +1361,7 @@ if __name__ == '__main__':
 
 		
 		### median
-		gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.75, 5), polar=True, useMask=True, generateMask=False)
+		gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.75, 5), polar=True, useMask=False, generateMask=False)
 		gridR, gridPHI = XY2RPHI(gridX, gridY)
 
 		#gridZ = gridZ - function((gridR, gridPHI), bestmed, warp1=True, sin=False)
@@ -1378,7 +1376,7 @@ if __name__ == '__main__':
 		wires = []
 		line_marker = dict(color='#000000', width=5)#, colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5)
 		### R axis
-		from shared import rad_sep
+		from shared import rad_sep, to_subscript
 		for phi in list(range(323, 155, -12))+rad_sep:
 			#for phi in np.arange(0, 360, 15):
 			lineR = np.arange(8.5, 20.6, 0.5)
@@ -1388,7 +1386,7 @@ if __name__ == '__main__':
 			#line_marker['color'] = lineZ
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ, mode='lines', line=line_marker))
 
-		### phi axis
+		### phi axis 
 		for r in [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5]:
 			linePHI = np.linspace(0, 360, int(360*r)//40)
 			lineR = np.repeat(r, linePHI.size)
@@ -1398,27 +1396,25 @@ if __name__ == '__main__':
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ, mode='lines', line=line_marker))
 
 		### phi sector text
-		#sectorPosPhi = np.arange(165, -35, -15)-7.5
-		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:])])
-		sectorPosR = np.repeat(22.5, len(sectorPosPhi))
-		sectorPosZ = function((sectorPosR, sectorPosPhi), bestmed)
-		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
-		sectorText = []
-		#for i in [0, 6, 12, 14]:
-		sectorPosZ[sectorPosZ>2.21] = 2.21
-		for i in range(len(sectorPosPhi)):
-			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$\huge \phi_{%i}$' % (i+1), showarrow=False, \
-				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=int(30*fontscale))))
+		sectorPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:]) if p1*p2>0])#avoid az=0
+		sectorR = np.repeat(22.5, len(sectorPhi))
+		sectorZ = function((sectorR, sectorPhi), bestmed)
+		sectorZ[sectorZ>2.21] = 2.21
+		sectorX, sectorY = RPHI2XY(sectorR, sectorPhi)
+		#sectorT = ['ϕ'+to_subscript(i+1) for i in range(len(sectorPhi))] # different format
+		sectorT = ['$\huge \phi_{%i}$' % (i+1) for i in range(len(sectorPhi))]
+		sectorText = [dict(x=sectorX[i], y=sectorY[i], z=sectorZ[i], text=sectorT[i], showarrow=False, \
+				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=int(30*fontscale))) for i in range(len(sectorT))]
 
 		### radius text
-		sectorPosR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5])])
-		#sectorPosR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5, 20.5])])
-		sectorPosPhi = np.repeat(-40, len(sectorPosR))
-		sectorPosZ = function((sectorPosR, sectorPosPhi), bestmed)
-		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
-		for i in [0, 8]:#range(len(sectorPosR)):
-			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='$\huge R_{%i}$' % (i+1), showarrow=False, \
-				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=int(20*fontscale))))
+		annulusR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5])])
+		annulusPhi = np.repeat(-40, len(annulusR))
+		annulusZ = function((annulusR, annulusPhi), bestmed)
+		annulusX, annulusY = RPHI2XY(annulusR, annulusPhi)
+		#annulusT = np.array(['R'+to_subscript(i+1) for i in range(len(annulusR))]) # different format
+		annulusT = ['$\huge R_{%i}$' % (i+1) for i in range(len(annulusR))]
+		annulusText = [dict(x=annulusX[i], y=annulusY[i], z=annulusZ[i], text='$\huge R_{%i}$' % (i+1), showarrow=False, \
+			xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=int(20*fontscale))) for i in [0,8]]
 		
 		sun = go.Scatter3d(x=[0], y=[8.15], z=[0], mode='markers', \
 				marker=dict(color='#ff6600', size=6))
@@ -1483,7 +1479,7 @@ if __name__ == '__main__':
 					tickvals = np.arange(-1, 3, 1),
 					#ticktext = ["%+i" % z for z in range(-1, 3, 1)],
 					zerolinecolor='#000000', zerolinewidth=5, **tick_kws),
-				annotations=[sunText, gcText, *sectorText],
+				annotations=[sunText, gcText, *sectorText, *annulusText],
 				aspectmode='manual',
 				aspectratio=dict(x=1, y=1, z=.45),
 				camera = dict(
@@ -1529,7 +1525,7 @@ if __name__ == '__main__':
 
 
 	### 3D visualization of residual with plotly (finally adopted)
-	if 0 and sin:
+	if 1 and sin:
 		figscale = 0.62
 		fontscale = 1.3
 
@@ -1574,17 +1570,18 @@ if __name__ == '__main__':
 			else: line_marker['width']=5
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ+0.01, mode='lines', line=line_marker))
 		
-		
-		#sectorPosPhi = np.arange(165, -35, -15)-7.5
-		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:])])
-		#sectorPosR = np.linspace(20, 24, sectorPosPhi.size)
-		sectorPosR = np.linspace(17, 19, sectorPosPhi.size)
-		sectorPosZ = np.zeros(sectorPosPhi.size)
-		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
-		sectorText = []
-		for i in range(len(sectorPosPhi)):
-			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='ϕ'+to_subscript(i+1), showarrow=False, \
-				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#000000', size=int(40*fontscale))))#'$\Huge \phi_{%i}$' % (i+1),
+
+
+		### phi sector text
+		sectorPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:]) if p1*p2>0])
+		sectorR = np.linspace(17, 19, sectorPhi.size)
+		sectorZ = np.zeros(sectorPhi.size)
+		sectorX, sectorY = RPHI2XY(sectorR, sectorPhi)
+		#sectorT = ['ϕ'+to_subscript(i+1) for i in range(len(sectorPhi))]
+		sectorT = ['$\huge \phi_{%i}$' % (i+1) for i in range(len(sectorPhi))]
+		#for i in range(len(sectorPhi)):
+		sectorText = [dict(x=sectorX[i], y=sectorY[i], z=sectorZ[i], text=sectorT[i], showarrow=False, \
+				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#000000', size=int(60*fontscale))) for i in range(len(sectorPhi))] 
 		
 
 		### bar ellipse
@@ -1871,7 +1868,7 @@ if __name__ == '__main__':
 		'''
 
 
-		### R axis
+		### R grid
 		from shared import rad_sep
 		for phi in list(range(323, 155, -12))+rad_sep:
 			#for phi in np.arange(0, 360, 15):
@@ -1881,7 +1878,7 @@ if __name__ == '__main__':
 			lineZ = function((lineR, linePHI), bestmed, warp=True)
 			mlab.plot3d(lineX, lineY, lineZ*zscale, color=(0,0,0), tube_radius=None, line_width=2)
 
-		### phi axis
+		### phi grid
 		for r in [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5]:
 			linePHI = np.linspace(0, 360, int(360*r)//40)
 			lineR = np.repeat(r, linePHI.size)
@@ -1945,13 +1942,13 @@ if __name__ == '__main__':
 
 
 		### radius text
-		sectorPosR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5])])
-		#sectorPosR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5, 20.5])])
-		sectorPosPhi = np.repeat(-40, len(sectorPosR))
-		sectorPosZ = function((sectorPosR, sectorPosPhi), bestmed)
-		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
-		for i in [0, 8]:#range(len(sectorPosR)):
-			mlab.text3d(sectorPosX[i], sectorPosY[i], sectorPosZ[i], text='$\huge R_{%i}$' % (i+1))
+		sectorR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5])])
+		#sectorR = np.array([(p1+p2)/2 for p1,p2 in zip([8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5], [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5, 20.5])])
+		sectorPhi = np.repeat(-40, len(sectorR))
+		sectorZ = function((sectorR, sectorPhi), bestmed)
+		sectorX, sectorY = RPHI2XY(sectorR, sectorPhi)
+		for i in [0, 8]:#range(len(sectorR)):
+			mlab.text3d(sectorX[i], sectorY[i], sectorZ[i], text='$\huge R_{%i}$' % (i+1))
 
 		#draw_grid()
 		mlab.view(azimuth=125, elevation=90-26)
@@ -2086,7 +2083,7 @@ if __name__ == '__main__':
 				x=0.24, y=0.12, len=0.3, orientation='h', tickvals=np.arange(-0.5,1,0.25), tickfont=dict(size=int(18*fontscale)))))
 
 		### median
-		gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.75, 5), polar=True)
+		gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(0.75, 5), polar=True, useMask=False)
 		gridR, gridPHI = XY2RPHI(gridX, gridY)
 
 		#gridZ = gridZ - function((gridR, gridPHI), bestmed, warp1=True, sin=False)
@@ -2100,7 +2097,7 @@ if __name__ == '__main__':
 		### wireframe
 		wires = []
 		line_marker = dict(color='#000000', width=5)#, colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5)
-		### R axis
+		### R grid
 		from shared import rad_sep
 		for phi in list(range(323, 155, -12))+rad_sep:
 			#for phi in np.arange(0, 360, 15):
@@ -2111,7 +2108,7 @@ if __name__ == '__main__':
 			#line_marker['color'] = lineZ
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ, mode='lines', line=line_marker))
 
-		### phi axis
+		### phi grid
 		for r in [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5]:
 			linePHI = np.linspace(0, 360, int(360*r)//40)
 			lineR = np.repeat(r, linePHI.size)
@@ -2122,7 +2119,7 @@ if __name__ == '__main__':
 
 
 		### phi sector text
-		sectorPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:])])
+		sectorPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:]) if p1*p2>0])
 		sectorR = np.repeat(22.5, len(sectorPhi))
 		sectorZ = function((sectorR, sectorPhi), bestmed)
 		sectorX, sectorY = RPHI2XY(sectorR, sectorPhi)
@@ -2254,7 +2251,7 @@ if __name__ == '__main__':
 			fig.write_html("fig/median_model_%icomp.html" % component)#, scale=3)
 
 
-	if 0 and sin:
+	if 1 and sin:
 		figscale = 1
 		fontscale = 1.3
 
@@ -2298,14 +2295,17 @@ if __name__ == '__main__':
 			wires.append(go.Scatter3d(x=lineX, y=lineY, z=lineZ+0.01, mode='lines', line=line_marker))
 		
 		
-		#sectorPosPhi = np.arange(165, -35, -15)-7.5
-		sectorPosPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:])])
-		sectorPosR = np.linspace(17, 19, sectorPosPhi.size)
-		sectorPosZ = np.zeros(sectorPosPhi.size)
-		sectorPosX, sectorPosY = RPHI2XY(sectorPosR, sectorPosPhi)
+		#sectorPhi = np.arange(165, -35, -15)-7.5
+		sectorPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:]) if p1*p2>0])
+		sectorR = np.linspace(17, 19, sectorPhi.size)
+		sectorZ = np.zeros(sectorPhi.size)
+		sectorX, sectorY = RPHI2XY(sectorR, sectorPhi)
+		sectorT = ['ϕ'+to_subscript(i+1) for i in range(len(sectorPhi))]
+		sectorText = go.Scatter3d(x=sectorX, y=sectorY, z=sectorZ, mode='text', \
+			text=sectorT, textposition='middle center', textfont=dict(color='#444444', size=int(18*fontscale)))
 		sectorText = []
-		for i in range(len(sectorPosPhi)):
-			sectorText.append(dict(x=sectorPosX[i], y=sectorPosY[i], z=sectorPosZ[i], text='ϕ'+to_subscript(i+1), showarrow=False, \
+		for i in range(len(sectorPhi)):
+			sectorText.append(dict(x=sectorX[i], y=sectorY[i], z=sectorZ[i], text='ϕ'+to_subscript(i+1), showarrow=False, \
 				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#000000', size=int(18*fontscale))))
 		
 
@@ -2361,9 +2361,9 @@ if __name__ == '__main__':
 		layout = go.Layout(
 			scene=dict(
 				xaxis=dict(title = dict(text='X (kpc)', font=title_font), #
-					range=[-8.01, 20.01], tickvals=np.arange(-10,25.1,5), **tick_kws),
+					range=[-8.01, 20.01], tickvals=np.arange(-8,20.1,4), **tick_kws),
 				yaxis=dict(title=dict(text='Y (kpc)', font=title_font), #
-					range=[-16.01, 20.01], tickvals=np.arange(-20,25.1,5), **tick_kws),
+					range=[-16.01, 20.01], tickvals=np.arange(-16,20.1,4), **tick_kws),
 				zaxis=dict(title=dict(text='ΔZ (kpc)', font=title_font), #
 					range=[-1.01, 1.01], tickvals=np.arange(-0.5, 2, 0.5), zerolinecolor='#000000',zerolinewidth=5, **tick_kws),
 				annotations=[
