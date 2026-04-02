@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colormaps
 import emcee, multiprocessing
 #import corner
-import os
+import os, glob
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy.ndimage import gaussian_filter
 from scipy.spatial import cKDTree
@@ -11,18 +11,25 @@ from scipy.interpolate import RegularGridInterpolator
 from scipy.stats import circmean, circstd
 from shared import textwidth, gc2g, g2gc
 
-#np.random.seed(42)
+np.random.seed(42)
 
 #comp1/comp2 * dR * sin
-component = 1
-sn = range(0,600)#None#
+component = 2
+runMCMC = 0 # run a mcmc fitting
+bootstrap = None #range(0,200)#None#
 excluded = True # whether to exclude clouds near 180deg
-sin = False 	# set to False to fit WARP, plot WARP corner, and plot warp 3D model
-			# set to True to fit SIN component, plot SIN corner, and plot 3D corrugation after subtracting warp
-radwave = True
+
+warp = True	# True to fit WARP, plot WARP corner, and plot warp 3D model
+sin = not warp # True to fit SIN component, plot SIN corner, and plot 3D corrugation after subtracting warp
+node = False # component==1, True to get Line Of Node, fit phi at different R
+
+radwave = False
 radnum = 0
-ringwave = False
+ringwave = True
 print('Running with %i component(s) and %s l in [195, 200] and in %s component' % (component, 'excluding' if excluded else 'including', 'corrugation' if sin else 'warp'))
+print('%-10s: %i' % ('component', component))
+
+Rsun = 8.15 #kpc
 
 if component == 1: path = 'oneComp'
 elif component ==2: path = 'twoComp'
@@ -41,94 +48,98 @@ parameter should be
 (inital_value, 'free'/'fixed', value_range)
 '''
 params = {}
-params[r'$a_0$'] = (-0.0, 'fixed', [-0.1, +0.1])	#a_0 in kpc [ 0.09414761  8.57497436  1.04215655 -1.06578696]
+params[r'$a_0$'] = (0.0, 'fixed', [-0.1, +0.1])	#a_0 in kpc [ 0.09414761  8.57497436  1.04215655 -1.06578696]
 
 ###first warp compo
-params[r'$a_1$'] = [0.09363, 'free' if not sin else 'fixed', [-0.501, 0.50]]	#a_1 in kpc
-params[r'$R_{w1}$'] = [8.56849936, 'free' if not sin else 'fixed', [7, 11]]		#R_w1 in kpc
-params[r'$b_{w1}$'] = [1, 'free' if (component==1) & (not sin) else 'fixed', [0.1, 2.5]]	#b_w1 index 0.9435
-params[r'$\phi_{w1}$'] = (-0.7049789, 'free' if not sin else 'fixed', [-90, 90])	#phi_w1 in deg
+params[r'$a_1$'] = [0.1102, 'free' if warp & (not node) else 'fixed', [-0.5, 0.5]]	#a_1 in kpc
+params[r'$R_{w1}$'] = [8.634, 'free' if warp & (not node) else 'fixed', [6, 11]]		#R_w1 in kpc
+params[r'$b_{w1}$'] = [1., 'free' if warp & (component==1) & (not node) else 'fixed', [0.1, 2.5]]	#b_w1 index 0.9435
+params[r'$\phi_{w1}$'] = (-1.663, 'free' if warp else 'fixed', [-90, 90])	#phi_w1 in deg
+
+params[r'$H$'] = (0.15, 'fixed' if warp & node else 'fixed', [0.01, 1])	#thickness in kpc
+wmode = 'sqrtmass'
+#rad 1,4
 
 ###second warp component
-params[r'$a_2$'] = (0.0, 'free' if (component==2) & (not sin) else 'fixed', [-0.50, 0.50])	#a_2 in kpc  -0.21
-params[r'$R_{w2}$'] = (12.7166892, 'free' if (component==2) & (not sin) else 'fixed', [10, 17])		#R_w2 in kpc
-params[r'$b_{w2}$'] = (2.03007431, 'free' if (component==2) & (not sin) else 'fixed', [0.1, 2.5])	#b_w2 index
-params[r'$\phi_{w2}$'] = (7, 'free' if (component==2) & (not sin) else 'fixed', [-90, 90])	#phi_w2 in deg
+params[r'$a_2$'] = (0.0, 'free' if warp & (component==2) else 'fixed', [-0.50, 0.50])	#a_2 in kpc  -0.21
+params[r'$R_{w2}$'] = (12.7166892, 'free' if warp & (component==2) else 'fixed', [8, 17])		#R_w2 in kpc
+params[r'$b_{w2}$'] = (2, 'free' if warp & (component==2) else 'fixed', [0.1, 2.5])	#b_w2 index 2.03007431
+params[r'$\phi_{w2}$'] = (7, 'free' if warp & (component==2) else 'fixed', [-90, 90])	#phi_w2 in deg
 
 ###sin component
 if sin and radwave:
 	# Radial direction (Radcliffe wave form)
 	if radnum == 0:
 		#phi=31
-		params[r'$A_{rad}$'] = (0.23, 'free' if sin else 'fixed', [0.01, 0.5])	# amplitude in kpc
-		params[r'$R_{rad}$'] = (11, 'free' if sin else 'fixed', [9, 15])  #start of sin component in kpc
-		params[r'$\sigma_{R_{rad}}$'] = (3, 'free' if sin else 'fixed', [1, 9.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
-		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [3, 7.5]) # period in kpc
+		params[r'$a_{rad}$'] = (0.23, 'free', [0.01, 0.5])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (11, 'free', [9, 15])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (3, 'free', [1, 9.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (4., 'free', [3, 7.5]) # period in kpc
 		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
-		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
-		params[r'$A_{rad,0}$'] = (0.0, 'free' if sin else 'fixed', [-0.2, 0.5]) # phase
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi, np.pi]) # phase
+		params[r'$a_{0,rad}$'] = (0.0, 'free', [-0.2, 0.5]) # phase
 		# Circumferential width
 		params[r'$\phi_{rad}$'] = (33.5, 'free', [30, 38])  #phi center in deg
 		params[r'$\sigma_{\phi_{rad}}$'] = (4, 'free', [1, 10]) #phi width in deg
 	elif radnum == 1:
-		#phi=-15
-		params[r'$A_{rad}$'] = (-0.2, 'free' if sin else 'fixed', [-0.5, -0.01])	# amplitude in kpc
-		params[r'$R_{rad}$'] = (14, 'free' if sin else 'fixed', [8, 17])  #start of sin component in kpc
-		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed' if sin else 'fixed', [1, 9.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
-		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [3, 7.5]) # period in kpc
+		#phi_14,15=-15
+		params[r'$a_{rad}$'] = (-0.15, 'free', [-0.5, -0.05])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (15, 'free', [13, 16])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed', [1, 9.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (5., 'free', [3, 8]) # period in kpc
 		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
-		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
-		params[r'$A_{rad,0}$'] = (0.0, 'fixed' if sin else 'fixed', [-0.2, 0.5]) # phase
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi, np.pi]) # phase
+		params[r'$a_{0,rad}$'] = (0.0, 'fixed', [-0.2, 0.5]) # phase
 		# Circumferential width
-		params[r'$\phi_{rad}$'] = (-18.0, 'free', [-40, -10])  #phi center in deg
-		params[r'$\sigma_{\phi_{rad}}$'] = (9.5, 'fixed', [1, 10]) #phi width in deg
+		params[r'$\phi_{rad}$'] = (-15.0, 'free', [-30, -10])  #phi center in deg
+		params[r'$\sigma_{\phi_{rad}}$'] = (5, 'fixed', [1, 20]) #phi width in deg
 	elif radnum == 2:
-		#phi=62
-		params[r'$A_{rad}$'] = (-0.2, 'free' if sin else 'fixed', [-0.5, -0.01])	# amplitude in kpc
-		params[r'$R_{rad}$'] = (11, 'free' if sin else 'fixed', [9.5, 12])  #start of sin component in kpc
-		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed' if sin else 'fixed', [1, 8.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
-		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [2, 7]) # period in kpc
+		#phi_8,9=62
+		params[r'$a_{rad}$'] = (-0.2, 'free', [-0.5, -0.01])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (11, 'free', [9.5, 12])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed', [1, 8.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (4., 'free', [2, 7]) # period in kpc
 		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
-		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
-		params[r'$A_{rad,0}$'] = (0.0, 'fixed' if sin else 'fixed', [-0.2, 0.5]) # phase
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi, np.pi]) # phase
+		params[r'$a_{0,rad}$'] = (0.0, 'fixed', [-0.2, 0.5]) # phase
 		# Circumferential width
 		params[r'$\phi_{rad}$'] = (65, 'free', [45, 85])  #phi center in deg
 		params[r'$\sigma_{\phi_{rad}}$'] = (9.5, 'fixed', [1, 10]) #phi width in deg
 	elif radnum == 3:
-		#phi=106, fail
-		params[r'$A_{rad}$'] = (-0.2, 'free' if sin else 'fixed', [-0.5, -0.01])	# amplitude in kpc
-		params[r'$R_{rad}$'] = (10, 'free' if sin else 'fixed', [9.5, 12])  #start of sin component in kpc
-		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed' if sin else 'fixed', [1, 6.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
-		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [2, 5]) # period in kpc
+		#phi_4,5=106
+		params[r'$a_{rad}$'] = (-0.2, 'free', [-0.5, -0.01])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (10, 'free', [9.5, 12])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed', [1, 6.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (4., 'free', [2, 5]) # period in kpc
 		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
-		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
-		params[r'$A_{rad,0}$'] = (0.0, 'fixed' if sin else 'fixed', [-0.2, 0.5]) # phase
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi, np.pi]) # phase
+		params[r'$a_{0,rad}$'] = (0.0, 'fixed', [-0.2, 0.5]) # phase
 		# Circumferential width
 		params[r'$\phi_{rad}$'] = (100, 'free', [90, 110])  #phi center in deg
 		params[r'$\sigma_{\phi_{rad}}$'] = (9.5, 'fixed', [1, 11]) #phi width in deg
 	elif radnum == 4:
-		#phi=106, fail
-		params[r'$A_{rad}$'] = (0.2, 'free' if sin else 'fixed', [0.01, 0.6])	# amplitude in kpc
-		params[r'$R_{rad}$'] = (12, 'free' if sin else 'fixed', [9.5, 15])  #start of sin component in kpc
-		params[r'$\sigma_{R_{rad}}$'] = (2, 'fixed' if sin else 'fixed', [1, 6.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
-		params[r'$P_{rad}$'] = (4., 'free' if sin else 'fixed', [1, 9]) # period in kpc
+		#phi_1,2=140, fail
+		params[r'$a_{rad}$'] = (0.1, 'free', [0.05, 0.6])	# amplitude in kpc
+		params[r'$R_{rad}$'] = (13.5, 'free', [9.5, 15])  #start of sin component in kpc
+		params[r'$\sigma_{R_{rad}}$'] = (4, 'fixed', [1, 6.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+		params[r'$P_{rad}$'] = (10., 'free', [1, 12]) # period in kpc
 		params[r'$lg\gamma_{rad}$'] = (2, 'fixed', [1.4, 10]) # period decay x dmax
-		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi/2, np.pi]) # phase
-		params[r'$A_{rad,0}$'] = (0.0, 'fixed' if sin else 'fixed', [-0.2, 0.5]) # phase
+		params[r'$phase_{rad}$'] = (0.0, 'fixed', [-np.pi, np.pi]) # phase
+		params[r'$a_{0,rad}$'] = (0.0, 'fixed', [-0.2, 0.5]) # phase
 		# Circumferential width
-		params[r'$\phi_{rad}$'] = (140, 'free', [130, 155])  #phi center in deg
+		params[r'$\phi_{rad}$'] = (137, 'free', [130, 150])  #phi center in deg
 		params[r'$\sigma_{\phi_{rad}}$'] = (9.5, 'fixed', [1, 11]) #phi width in deg
 
 elif sin and ringwave:
 	# Circumferential direction
-	params[r'$A_{az}$'] = (0.2, 'free' if sin else 'fixed', [0.08, 0.5])	# amplitude in kpc
+	params[r'$a_{az}$'] = (0.12, 'free' if sin else 'fixed', [0.08, 0.5])	# amplitude in kpc
 	params[r'$\phi_{az}$'] = (20., 'free' if sin else 'fixed', [0, 40]) # period in kpc
 	params[r'$\sigma_{\phi_{az}}$'] = (100., 'fixed' if sin else 'fixed', [1, 200]) # period in kpc
 	params[r'$P_{az}$'] = (52., 'free' if sin else 'fixed', [40, 90]) # period in kpc
 	params[r'$lg\gamma_{az}$'] = (2.8, 'fixed' if sin else 'fixed', [1, 4]) # period in kpc
 	# Radial width
 	params[r'$R_{az}$'] = (12.7, 'free' if sin else 'fixed', [11, 15])  #start of sin component in kpc
-	params[r'$\sigma_{R_{az}}$'] = (0.8, 'free' if sin else 'fixed', [0.1, 2.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
+	params[r'$\sigma_{R_{az}}$'] = (0.9, 'free' if sin else 'fixed', [0.1, 2.5]) # amplitude decay width in 1/kpc2 ([1, 6.5] for comp1)
 
 else:
 	params[r'$a_3$'] = (0.3, 'free' if sin else 'fixed', [0, 0.50]) #a_3 in kpc
@@ -136,7 +147,7 @@ else:
 	params[r'$P_0$'] = (1.9, 'free' if sin else 'fixed', [1.01, 5.0])  #period of sin component in kpc
 	params[r'$P_1$'] = (0.2, 'free' if sin else 'fixed', [-0.2, 0.3])  #period increasement of sin component in kpc
 	# Radial linear baseline 
-	params[r'$a_{rad,0}$'] = (0.00, 'free' if sin else 'fixed', [-0.2, 0.2])  #baseline
+	params[r'$a_{0,rad}$'] = (0.00, 'free' if sin else 'fixed', [-0.2, 0.2])  #baseline
 	# Circumferential width
 	params[r'$\phi_{circ}$'] = (33.5, 'fixed', [30, 38])  #phi center in deg
 	params[r'$\sigma_{circ}$'] = (4, 'fixed', [1, 10]) #phi width in deg
@@ -153,8 +164,8 @@ else:
 ###MCMC setting  [ -0.08204349   0.10188      7.77984319 -10.99553919  -0.11923537 13.79306634 -23.78646842]
 
 nwalkers = 32 	#how many thread
-burnin = 500#1500 	#number of iteration to reach local minimum (usually 20~30% of niter)
-niter = 1000#3000	#number of iteration
+burnin = 1000#1500 	#number of iteration to reach local minimum (usually 20~30% of niter)
+niter = 3000#3000	#number of iteration
 
 '''
 one component: fix a0=0, free (a1, Rw1, bw1, phiw1)
@@ -162,12 +173,6 @@ two component: fix a0=0, bw1=1, free (a1, Rw1, phiw1, a2, Rw2, bw2, phiw2)
 phiw at diff R: free (phiW1) only
 sin component: fix phisin=33.5, phisinwidth=4, free (a3, Rsin, P0, P1, a4)
 '''
-
-
-params[r'$a_1$'][1] = 'fixed'
-params[r'$R_{w1}$'][1] = 'fixed'
-params[r'$b_{w1}$'][1] = 'fixed'
-
 
 
 ###get free parameters
@@ -222,13 +227,13 @@ def radcliffe_wave(d, A, delta, P, dmaxXgamma, phi, a4):
 	return amp*wav
 
 
-def function(x, free_params, warp=not sin, sin=sin):
+def function(x, free_params, warp=warp, sin=sin):
 	if sin and radwave:
-		a0, a1, Rw1, bw1, PHIw1, a2, Rw2, bw2, PHIw2, Arad, Rrad, sigmaRrad, Period0, Period1, phase, Arad0, PHIrad, sigmaPHIrad = fp2p(free_params)
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Arad, Rrad, sigmaRrad, Period0, Period1, phase, Arad0, PHIrad, sigmaPHIrad = fp2p(free_params)
 	elif sin and ringwave:
-		a0, a1, Rw1, bw1, PHIw1, a2, Rw2, bw2, PHIw2, Acirc, PHIcirc, sigmaPHIcirc, Period0, Period1, Rcirc, sigmaRcirc = fp2p(free_params)
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Acirc, PHIcirc, sigmaPHIcirc, Period0, Period1, Rcirc, sigmaRcirc = fp2p(free_params)
 	else:
-		a0, a1, Rw1, bw1, PHIw1, a2, Rw2, bw2, PHIw2, Arad, Rrad, Period0, Period1, Arad0, PHIcirc, sigmaPHIcirc = fp2p(free_params)
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Arad, Rrad, Period0, Period1, Arad0, PHIcirc, sigmaPHIcirc = fp2p(free_params)
 
 	R, PHI = x
 	
@@ -240,8 +245,9 @@ def function(x, free_params, warp=not sin, sin=sin):
 		index = R>Rw1
 		y[index] += a1 * (R[index]-Rw1)**bw1 * np.sin((PHI[index]-PHIw1)/180*np.pi)
 		###warp component 2
-		index = R>Rw2
-		y[index] += a2 * (R[index]-Rw2)**bw2 * np.sin(2*(PHI[index]-PHIw2)/180*np.pi)
+		if component>1:
+			index = R>Rw2
+			y[index] += a2 * (R[index]-Rw2)**bw2 * np.sin(2*(PHI[index]-PHIw2)/180*np.pi)
 
 	if sin:
 		if radwave:
@@ -271,14 +277,61 @@ def function(x, free_params, warp=not sin, sin=sin):
 	return y
 
 
+def dZ_dR(x, free_params, warp=not sin, sin=sin):
+	if sin and radwave:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Arad, Rrad, sigmaRrad, Period0, Period1, phase, Arad0, PHIrad, sigmaPHIrad = fp2p(free_params)
+	elif sin and ringwave:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Acirc, PHIcirc, sigmaPHIcirc, Period0, Period1, Rcirc, sigmaRcirc = fp2p(free_params)
+	else:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Arad, Rrad, Period0, Period1, Arad0, PHIcirc, sigmaPHIcirc = fp2p(free_params)
+
+	R, PHI = x
+	
+	y = np.zeros(R.shape)
+
+	if warp:
+		### warp component 1
+		index = R>Rw1
+		y[index] += a1 * bw1 * (R[index]-Rw1)**(bw1-1) * np.sin((PHI[index]-PHIw1)/180*np.pi)
+		### warp component 2
+		if component>1:
+			index = R>Rw2
+			y[index] += a2 * bw2 * (R[index]-Rw2)**(bw2-1) * np.sin(2*(PHI[index]-PHIw2)/180*np.pi)
+	return y
+
+
 def lnlike(free_params, data):
 	#likelihood, or probability
-	R, PHI, Z, mass = data
-	LnProb = -0.5 * np.sum( (Z - function((R, PHI), free_params))**2 * mass )
+	R, PHI, Z, mass, err2_Z, err2_R = data
+	if sin and radwave:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Arad, Rrad, sigmaRrad, Period0, Period1, phase, Arad0, PHIrad, sigmaPHIrad = fp2p(free_params)
+	elif sin and ringwave:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Acirc, PHIcirc, sigmaPHIcirc, Period0, Period1, Rcirc, sigmaRcirc = fp2p(free_params)
+	else:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Arad, Rrad, Period0, Period1, Arad0, PHIcirc, sigmaPHIcirc = fp2p(free_params)
+
+	#plt.plot(err2_Z**0.5, np.abs(dZ_dR((R, PHI), free_params)) * err2_R**0.5, '.')
+	#plt.plot([0,1],[0,1])
+	#plt.show()
+
+	#err2_Z = err2_Z + dZ_dR((R, PHI), free_params)**2 * err2_R
+	Sig2 = (err2_Z + H**2) / mass
+	#Sig2 = err2_Z / mass + H**2
+	'''
+	sig2 = (err^2 + H^2) / m
+		no dR: R~8.5, bw1~0.9 phi1=0.7+-0.7
+		+ dR: R~7.9, bw1~1.6 phi1=1.2+-0.7
+
+	sig2 = err^2 / m + H^2
+		no dR: R~9.5, bw1~0.75 phi1=0.0+-0.7
+		+ dR: R~8.3, bw1=1.3 phi1=0.8+-0.7
+	'''
+	LnProb = -0.5 * np.sum( (Z - function((R, PHI), free_params))**2 / Sig2 + np.log(2*np.pi*Sig2) )
 	return LnProb
+
 def lnlike_normalized(free_params, data):
 	#likelihood, or probability
-	R, PHI, Z, mass = data
+	R, PHI, Z, mass, err2_Z = data
 	LnProb = -0.5 * np.sum( (Z - function((R, PHI), free_params))**2 * norm_mass )
 	return LnProb
 def lnprior(free_params):
@@ -299,18 +352,19 @@ def main(*data, initial=initial, nwalkers=nwalkers, burnin=burnin, niter=niter, 
 	ndim = len(initial)
 	p0 = [np.array(initial) + 1e-7 * np.random.randn(ndim) for i in range(nwalkers)]
 
-	with multiprocessing.Pool() as pool:
+	#with multiprocessing.Pool() as pool:
+	if 1:
 		#mcmc sampler
 		sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=data, \
-			moves=emcee.moves.StretchMove(0.2), pool=pool)
+			moves=emcee.moves.StretchMove(0.2))#, pool=pool)
 		
 		print("Initial = ", initial)
 
 		print("Running burn-in...")
 		p0, _, _ = sampler.run_mcmc(p0, burnin, progress=True)
 
-		#print("After burn-in:\n")
-		#for p in p0: print(' '.join(['%+.3f' % v for v in p]))
+		print("After burn-in:\n")
+		for p in p0: print(' '.join(['%+.3f' % v for v in p]))
 
 		sampler.reset()
 
@@ -329,7 +383,6 @@ def _excludedXYZ(x, y, z):
 	y[idx] = np.nan
 	z[idx] = np.nan
 	return x, y, z
-
 
 
 def convolveZ(x, y, z, w, sampleX, sampleY, kernel=1, useMask=True, generateMask=False):
@@ -410,7 +463,6 @@ def convolveZ(x, y, z, w, sampleX, sampleY, kernel=1, useMask=True, generateMask
 	return sampleZ
 
 
-
 def convolveZonGrid(x, y, z, w, step=None, polar=True, **kws):
 	'''
 	convolveZ on regular grid
@@ -461,7 +513,7 @@ def aicbic(data, free_params, lnlike=lnlike_normalized):
 def g2gc(l, b, d):
 	#galactic to galactocentric
 	d2r = np.pi/180
-	X = d * np.cos(b*d2r) * np.cos(l*d2r) - 8.15
+	X = d * np.cos(b*d2r) * np.cos(l*d2r) - Rsun
 	Y = d * np.cos(b*d2r) * np.sin(l*d2r)
 	Z = d * np.sin(b*d2r)
 
@@ -513,74 +565,81 @@ if __name__ == '__main__':
 		Y = yy[ind]
 		Z = zz[ind]
 		mass = mas[ind] #/complete[ind]) #*gal_ridus[ind]
-		norm_mass = mass/np.sum(mass)
-
-		# to get statistical uncertainty, i need to recalculate R,Phi,z after adding noise
 		l = l[ind]
 		b = b[ind]
 		distance = distance[ind]
 		err_dist = err_dist[ind]
 
+		if wmode=='lgmass':
+			norm_mass = np.log10(mass)
+			norm_mass = norm_mass - np.min(norm_mass) +1 #+1
+		elif wmode=='sqrtmass':
+			norm_mass = np.sqrt(mass)
+		elif wmode=='mass':
+			norm_mass = mass
+		else: raise
+		norm_mass = norm_mass/np.mean(norm_mass)
+
+
 		R, PHI = XY2RPHI(X, Y)
 
+		# to get statistical uncertainty, i need to recalculate R,Phi,z after adding noise
+
 		# estimate uncertainty
-		#dR_ds = (distance * np.cos(np.deg2rad(b))**2 - 8.15 * np.cos(np.deg2rad(l)) * np.cos(np.deg2rad(b))) / R
-		#dR = (np.sin(np.deg2rad(b)) - dz_dR * dR_ds)**2 * err_dist**2
+		cosl = np.cos(np.deg2rad(l))
+		cosb = np.cos(np.deg2rad(b))
+		sinb = np.sin(np.deg2rad(b))
+		err2_Z = (err_dist * sinb)**2
+		err2_Z[err2_Z < 1e-12] = 1e-12 #avoid dZ=0
+		err2_R = (err_dist * np.abs((distance * cosb**2 - Rsun * cosl * cosb) / R))**2			
+			
+		if runMCMC:
+			# use mock to estimate
+			mockZ = []
+			mockR = []
+			for i in range(1000):
+				mR, PHI, mZ = g2gc(l, b, distance+np.random.normal(0,1,err_dist.size)*err_dist)#err_dist=dD/5km/s, convert to 7 km/s
+				mockZ.append(mZ)
+				mockR.append(mR)
+			err_hi = np.percentile(mockZ, 84, axis=0) - np.median(mockZ, axis=0)
+			err_lo = np.median(mockZ, axis=0) - np.percentile(mockZ, 16, axis=0)# hi and lo as similar
+			err_Z = (err_lo + err_hi) /2
+			err_Z[err_Z < 1e-6] = 1e-6 #avoid dZ=0
+			err2_Z = err_Z**2
 
-		#data = data.T[mass>1e3].T
-		'''
-		data = np.loadtxt(cat).T
-		R, PHI, Z, mass = data
+			err_R = (np.percentile(mockR, 84, axis=0) - np.percentile(mockR, 16, axis=0))/2
+			err2_R = err_R**2
 
-		X, Y = RPHI2XY(R, PHI)
-		'''
+		data = np.vstack([R, PHI, Z, norm_mass, err2_Z, err2_R])
+		print('Data in shape:', data.shape)
 
-		### filter R range
-		if 0:
-			### warp model of annulus
-			i = 1
-			R_sep = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-			R1, R2 = R_sep[i:i+2]
-			print(R1, R2)
-			idx = (R>=R1) & (R<R2)
-			R = R[idx]
-			PHI = PHI[idx]
-			Z = Z[idx]
-			mass = mass[idx]
-			norm_mass = mass/np.sum(mass)
-			l = l[idx]
-			b = b[idx]
-			distance = distance[idx]
-			err_dist = err_dist[idx]
-			suffix = '_%i_%i' % (R1, R2)
-
-		elif sin:
+		if sin:
 			### sin component
 			if radwave:
-				suffix = '_radwave%i' % radnum
+				suffix = '_radwave%i_%03ipc_%s' % (radnum, params[r'$H$'][0]*1000, wmode)
 			elif ringwave:
-				suffix = '_ringwave'
+				suffix = '_ringwave_%03ipc_%s' % (params[r'$H$'][0]*1000, wmode)
 			else:
 				suffix = '_sin'
+
 		else:
 			### warp model
-			suffix = ''
+			suffix = '_errD_150pc_sqrtmass'
+			#suffix = '_errD_%03ipc_%s' % (params[r'$H$'][0]*1000, wmode)
 			#suffix = '_errD_mock0957'
 			#suffix = '_exPer100136'
 			#suffix = '_le16kpc'
 
-		data = np.vstack([R, PHI, Z, mass])
 
 		### load residual data
 		if sin:
-			data = np.load('residual_%icomp.npy' % (component))
+			adoptedSuffix = '_errD_150pc_sqrtmass'
+			data = np.load('residual_%icomp%s.npy' % (component, adoptedSuffix))
 			#data[3] = data[3] * data[0]**2
 
-			R, PHI, Z, mass = data
+			R, PHI, Z, mass, err2_Z, err2_R = data
 			X, Y = RPHI2XY(R, PHI)
-			print(Z)
-			
-		print('Data in shape:', data.shape)
+
 	else:
 		### fit median
 		if sin:
@@ -594,82 +653,80 @@ if __name__ == '__main__':
 			#plt.scatter(gridX[idx], gridY[idx], c=gridZ[idx], cmap='coolwarm', vmin=-0.3, vmax=0.3, s=10)
 			#plt.show()
 			data = np.vstack([gridR[idx], gridPHI[idx], gridZ[idx], gridMass[idx]])
-		'''
-		suffix = '_star'
-		from astropy.io import ascii
-		t = ascii.read("star/apjs.webarchive")
-		l = np.array(t['glon'])
-		b = np.array(t['glat'])
-		d = np.array(t['d-all'])/1e3
-		w = mass = 1/(np.array(t['e_d-all'])/1e3)**2
-		from shared import g2gc
-		X, Y, Z = g2gc(l, b, d, xyz=True)
-		R, PHI, Z = g2gc(l, b, d, xyz=False)
-		norm_mass = mass/np.sum(mass)
 
-		data = np.vstack([R, PHI, Z, mass])
-
-		if sin:
-			data = np.load('residual_%icomp%s.npy' % (component, suffix))
-			R, PHI, Z, mass = data
-			X, Y = RPHI2XY(R, PHI)
-		'''
-
-		'''
-		###simulate
-		ns = 1000
-		R = np.random.normal(9, 10, ns)
-		R[R<0] = -R[R<0]
-		PHI = np.random.rand(ns) * 150 + 30
-		mass = np.random.rand(ns) + 0.1
-
-		###a0, a, Rw, PHIw, b
-		Z = function((R, PHI), initial)
-		Z += np.random.normal(0, 5, ns)
-
-		print(np.isnan(Z).sum())
-
-		data = np.vstack([R, PHI, Z, mass])
-		'''
 
 	###run MCMC
-	if 0:
-		if sn:
-			for i in sn:
+	if runMCMC:
+		if bootstrap:
+			for i in bootstrap:
 				print('iter %04i' % i)
-				R, PHI, Z = g2gc(l,b,distance+np.random.normal(0,1,err_dist.size)*err_dist/5*7)#err_dist=dD/5km/s, convert to 7 km/s
-				data = np.vstack([R, PHI, Z, mass])
-
-				if 1:
+				R, PHI, Z = g2gc(l,b,distance+np.random.normal(0,1,err_dist.size)*err_dist)#err_dist=dD/5km/s, convert to 7 km/s
+				data = np.vstack([R, PHI, Z, norm_mass, err2_Z, err2_R])
+				'''
+				if node:
 					# R-phi
 					R_sep = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 					for s in range(9):
 						R1, R2 = R_sep[s:s+2]
 						print('dealing range:', R1, R2)
 						idx = (R>=R1) & (R<R2)
-						data = np.vstack([R[idx], PHI[idx], Z[idx], mass[idx]])
+						data = np.vstack([R[idx], PHI[idx], Z[idx], norm_mass[idx], err2_Z[idx], err2_R[idx]])
 						sampler, pos, prob, state = main(data)
 						steps = sampler.flatchain
 						probs = sampler.flatlnprobability
 						suffix = '_%i_%i' % (R1, R2)
-						np.save(os.path.join(path, 'steps%s_errD_mock%04i.npy' % (suffix, i)), steps)
-						np.save(os.path.join(path, 'probs%s_errD_mock%04i.npy' % (suffix, i)), probs)
+						np.save(os.path.join(path, 'steps%s_boot%04i.npy' % (suffix, i)), steps)
+						np.save(os.path.join(path, 'probs%s_boot%04i.npy' % (suffix, i)), probs)
 				else:
-					# all samples
-					sampler, pos, prob, state = main(data)
-					steps = sampler.flatchain
-					probs = sampler.flatlnprobability
-					np.save(os.path.join(path, 'steps%s_errD_mock%04i.npy' % (suffix, i)), steps)
-					np.save(os.path.join(path, 'probs%s_errD_mock%04i.npy' % (suffix, i)), probs)
+				'''
+				# all samples
+				sampler, pos, prob, state = main(data)
+				steps = sampler.flatchain
+				probs = sampler.flatlnprobability
+				np.save(os.path.join(path, 'steps%s_boot%04i.npy' % (suffix, i)), steps)
+				np.save(os.path.join(path, 'probs%s_boot%04i.npy' % (suffix, i)), probs)
+		elif node:
+			# R-phi
+			R_sep = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+			for s in range(9):
+				R1, R2 = R_sep[s:s+2]
+				print('dealing range:', R1, R2)
+				idx = (R>=R1) & (R<R2)
+				data = np.vstack([R[idx], PHI[idx], Z[idx], norm_mass[idx], err2_Z[idx], err2_R[idx]])
+				sampler, pos, prob, state = main(data)
+				steps = sampler.flatchain
+				probs = sampler.flatlnprobability
+				radius = '_%i_%i' % (R1, R2)
+				np.save(os.path.join(path, 'steps%s%s.npy' % (radius, suffix)), steps)
+				np.save(os.path.join(path, 'probs%s%s.npy' % (radius, suffix)), probs)
+				print('MCMC done. Export to ', os.path.join(path, 'steps%s%s.npy' % (radius, suffix)))
 		else:
-			sampler, pos, prob, state = main(data)
-			steps = sampler.flatchain
-			probs = sampler.flatlnprobability
-			np.save(os.path.join(path, 'steps%s.npy' % suffix), steps)
-			np.save(os.path.join(path, 'probs%s.npy' % suffix), probs)
+			'''
+			for H in [0.1, 0.125, 0.15, 0.175, 0.2, 0.25, 0.3]:
+				params[r'$H$'] = (H, 'fixed', [0.01, 1])	#thickness in kpc
+				if radwave: suffix = '_radwave%1i_%03ipc_%s' % (radnum, params[r'$H$'][0]*1000, wmode)
+				else: suffix = '_ringwave_%03ipc_%s' % (params[r'$H$'][0]*1000, wmode)
+
+				niter=3000 if (H==0.15) & (wmode=='sqrtmass') else 1000
+				
+				if os.path.exists(os.path.join(path, 'probs%s.npy' % suffix)):
+					p=np.load(os.path.join(path, 'probs%s.npy' % suffix))
+					if np.isfinite(p).all():
+						print('skip', H)
+						#continue
+			'''
+			if 1:
+				sampler, pos, prob, state = main(data, niter=niter)
+				steps = sampler.flatchain
+				probs = sampler.flatlnprobability
+				np.save(os.path.join(path, 'steps%s.npy' % suffix), steps)
+				np.save(os.path.join(path, 'probs%s.npy' % suffix), probs)
+				print('MCMC done. Export to ', os.path.join(path, 'steps%s.npy' % suffix))
 	else:
+		print('Load ', os.path.join(path, 'steps%s.npy' % suffix))
 		steps = np.load(os.path.join(path, 'steps%s.npy' % suffix))
 		probs = np.load(os.path.join(path, 'probs%s.npy' % suffix))
+
 
 	### get median / best / best med
 	if 1:
@@ -683,22 +740,108 @@ if __name__ == '__main__':
 					i+=1
 			out[0]+='\n'
 			return out
-		print(probs.shape, steps.shape)
-		med  = np.median(steps, axis=0)
-		best = steps[np.argmax(probs)]
-		bestmed = np.mean(steps[probs > np.percentile(probs, 98)], axis=0)
+		def bestValue(steps, probs=None, method='bestmed', top=98):
+			if method == 'med': return np.median(steps, axis=0)
+			elif method == 'best': return steps[np.argmax(probs)]
+			elif method == 'bestmed': return np.mean(steps[probs > np.percentile(probs, top)], axis=0)
+		def statisticalUncertainty(steps, probs, best=None):
+			if best is None: best = bestValue(steps, probs, method='bestmed')
+			up = np.percentile(steps, 84.14, axis=0) - best
+			lo = np.percentile(steps, 15.86, axis=0) - best
+			return lo, up
+		def systematicUncertainty(wildcard='steps_errD_???pc_*mass*', best=None):
+			modelP = []
+			modelFiles = glob.glob(os.path.join(path, wildcard))
+			modelFiles.sort()
+			print('Found %i models' % (len(modelFiles)))
+			if len(modelFiles)==0:
+				print('No model found')
+				return
+			for i,f in enumerate(modelFiles):
+				modelSteps = np.load(f)
+				modelProbs = np.load(f.replace('steps', 'probs'))
+				modelBest = bestValue(modelSteps, modelProbs, method='bestmed')
+				modelP.append(modelBest)
+			modelP = np.array(modelP)
+			#plt.plot(modelP[0::3],'.-')
+			#plt.plot(modelP[1::3],'.-')
+			#plt.plot(modelP[2::3],'.-')
+			#plt.show()
+			up = modelP.max(axis=0)-best
+			lo = modelP.min(axis=0)-best
+			return lo, up
+		def scientificNotationTitle(v, *lu, digit=4):
+			### show value, lower, and upper uncertainty in scientific notation format
+			e = np.floor(np.log10(np.abs(v)))
+			### dont convert xx.xx to x.xxx*10^1
+			if e == 1:
+				e = 0
+				mind = 2
+			else: mind = 3
+			vs = v/10**e
+			lus = [k/10**e for k in lu]
+			### show more digit if any error is zero
+			for d in range(mind, 11):
+				lustr = [f'%+.{d}f' % k for k in lus]
+				if all([float(k) != 0.0 for k in lustr]): break
+			vstr = f'%+.{d}f' % vs
+			lustr = [f'%+.{d}f' % k for k in lus]
+			### print latex form
+			vlatex = f'%+.{d-int(e)}f' % (v)
+			lulatex = [f'%+.{d-int(e)}f' % (k) for k in lu]
+			latex = '& %s' % vlatex
+			for i in range(0, len(lulatex), 2):
+				latex += ' & $^{%s}_{%s}$' % (lulatex[i+1], lulatex[i])
+			print(latex) #export latex table
+			if e==0:
+				return '$%s_{%s}^{%s}$' % (vstr, *lustr[:2])
+			else:
+				return '$%s_{%s}^{%s}$ x$10^{%i}$' % (vstr, *lustr[:2], e)
+
+		print('suffix is', suffix)
+		print('shape of probs and steps:', probs.shape, steps.shape)
+		med  = bestValue(steps, method='med')
+		best = bestValue(steps, probs, method='best')
+		bestmed = bestValue(steps, probs, method='bestmed')
+		print(steps, probs)
 		print('The best fitting result is:\n', *betterOutput(best))
 		print('The median fitting result is:\n', *betterOutput(med))
 		print('The median of the best is:\n', *betterOutput(bestmed))
+		print('Copy to shared.py:', list(bestmed))
+		#dz = Z - function((R,PHI), bestmed)
+		#print(np.std(dz))
+		#plt.scatter(R, dz, c=np.log10(mass), s=0.1)
+		#plt.show()
 
-		if sn:
+		if bootstrap:
+			### filter R range
+			if node:
+				### warp model of annulus
+				i = 1
+				R_sep = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+				R1, R2 = R_sep[i:i+2]
+				print('Rgal from ', R1, 'to', R2, 'kpc')
+				idx = (R>=R1) & (R<R2)
+				R = R[idx]
+				PHI = PHI[idx]
+				Z = Z[idx]
+				mass = mass[idx]
+				norm_mass = norm_mass[idx]
+				l = l[idx]
+				b = b[idx]
+				distance = distance[idx]
+				err_dist = err_dist[idx]
+				err2_Z = err2_Z[idx]
+				err2_R = err2_R[idx]
+				suffix = '_%i_%i' % (R1, R2)
+
 			mockmed = []
-			for i in sn:
-				if not os.path.exists(os.path.join(path, 'steps%s_errD_mock%04i.npy' % (suffix, i))): continue
-				mocksteps = np.load(os.path.join(path, 'steps%s_errD_mock%04i.npy' % (suffix, i)))
-				mockprobs = np.load(os.path.join(path, 'probs%s_errD_mock%04i.npy' % (suffix, i)))
+			for i in bootstrap:
+				if not os.path.exists(os.path.join(path, 'steps%s_boot%04i.npy' % (suffix, i))): continue
+				mocksteps = np.load(os.path.join(path, 'steps%s_boot%04i.npy' % (suffix, i)))
+				mockprobs = np.load(os.path.join(path, 'probs%s_boot%04i.npy' % (suffix, i)))
 				if np.isnan(mocksteps).any(): continue
-				bestmedi = np.mean(mocksteps[mockprobs > np.percentile(mockprobs, 98)], axis=0)
+				bestmedi = np.mean(mocksteps[mockprobs > np.percentile(mockprobs, 99)], axis=0)
 				mockmed.append(bestmedi)
 			mockmed = np.array(mockmed)
 
@@ -718,30 +861,47 @@ if __name__ == '__main__':
 			lower = mockmean - p16
 			err_upper = np.sqrt(upper**2 + np.max([np.zeros(bias.size), +bias], axis=0)**2)
 			err_lower = np.sqrt(lower**2 + np.max([np.zeros(bias.size), -bias], axis=0)**2)
-			print('error + is:\n', *betterOutput(err_upper))
-			print('error - is:\n', *betterOutput(-err_lower))
-			
-	'''
-	#bestmed=initial
-	fig, ax = plt.subplots()
-	idx = np.abs(PHI-bestmed[-2]) < 4
-	ax.scatter(R[idx], Z[idx], s=(mass[idx]*8e-3), c=PHI[idx], cmap='coolwarm', alpha=0.5)
+			print('systematic error from Derr + is:\n', *betterOutput(err_upper))
+			print('systematic error from Derr - is:\n', *betterOutput(-err_lower))
 
-	Raxis = np.linspace(7, 22, 1000)
-	PHIaxis = np.full(1000, bestmed[-2])
-	mz = function((Raxis, PHIaxis), bestmed)
-	ax.plot(Raxis, mz, 'r--')
+		if node:
+			R_sep = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+			v,l,u=[],[],[]
+			for s in range(9):
+				R1, R2 = R_sep[s:s+2]
+				print('dealing range:', R1, R2)
+				radius = '_%i_%i' % (R1, R2)
+				rsteps = np.load(os.path.join(path, 'steps%s%s.npy' % (radius, suffix)))
+				rprobs = np.load(os.path.join(path, 'probs%s%s.npy' % (radius, suffix)))
+				rbestmed = bestValue(rsteps, rprobs)
+				# statistical uncertainty
+				stalo, staup = statisticalUncertainty(rsteps, rprobs, best=rbestmed)
+				# systematic uncertainty
+				syslo, sysup = systematicUncertainty('steps%s_errD_???pc_*mass*' % radius, rbestmed)
+				v.append(rbestmed[0])
+				l.append(-np.sqrt(stalo**2+syslo**2)[0])
+				u.append(np.sqrt(staup**2+sysup**2)[0])
+			print('v=',v, '\nl=', l, '\nu=', u)
+		elif warp:
+			# statistical uncertainty
+			stalo, staup = statisticalUncertainty(steps, probs, best=bestmed)
+			# systematic uncertainty
+			syslo, sysup = systematicUncertainty('steps_errD_???pc_*mass*', bestmed)
+			for i in range(len(bestmed)):
+				scientificNotationTitle(bestmed[i], stalo[i], staup[i], syslo[i], sysup[i])
+		else:
+			# statistical uncertainty
+			stalo, staup = statisticalUncertainty(steps, probs, best=bestmed)
+			# systematic uncertainty
+			syslo, sysup = systematicUncertainty('steps_radwave%01i_???pc_*mass*' % radnum if radwave else 'steps_ringwave_???pc_*mass*', bestmed)
+			for i in range(len(bestmed)):
+				scientificNotationTitle(bestmed[i], stalo[i], staup[i], syslo[i], sysup[i])
 
-	fig, ax = plt.subplots()
-	Xg, Yg = np.meshgrid(np.linspace(-20,20,300), np.linspace(-20,20,300))
-	Rg, PHIg = XY2RPHI(Xg, Yg)
-	mz = function((Rg, PHIg), bestmed)
-	ax.imshow(mz, extent=(-20,20,-20,20), origin='lower', cmap='coolwarm', vmin=-0.3, vmax=0.3)
-	from shared import rad_sep
-	for r in rad_sep: ax.plot([0,np.sin(np.deg2rad(r))*20],[0,np.cos(np.deg2rad(r))*20], 'k--', alpha=0.3)
-	for r in np.arange(2, 20, 2): ax.plot(*RPHI2XY(np.full(360,r), np.linspace(0,360,360)), 'k--', alpha=0.3)
-	#plt.show()
-	'''
+		#print('systematic error from H & mass is:\n', *betterOutput(sysup),\
+		#	'\n', *betterOutput(syslo))
+		#scientificNotationTitle(values[i], min(lim)-values[i], max(lim)-values[i], syslo[i], sysup[i]))
+
+
 
 	### AIC / BIC
 	if 0:
@@ -807,35 +967,6 @@ if __name__ == '__main__':
 				### extend according to s range
 				ma, mi = np.nanmax(s), np.nanmin(s)
 				return mi-(ma-mi)*0.1, ma+(ma-mi)*0.1
-			def scientificNotationTitle(v, l, u, digit=4):
-				### show value, lower, and upper uncertainty in scientific notation format
-				e = np.floor(np.log10(np.abs(v)))
-				### dont convert xx.xx to x.xxx*10^1
-				if e == 1:
-					e = 0
-					mind = 2
-				else: mind = 3
-				vs = v/10**e
-				us = u/10**e
-				ls = l/10**e
-				### show more digit if any error is zero
-				for d in range(mind, 11):
-					ustr = f'%+.{d}f' % us
-					lstr = f'%+.{d}f' % ls
-					if float(ustr) != 0.0 and float(lstr) != 0.0: break
-					else: d = 10
-				vstr = f'%+.{d}f' % vs
-				ustr = f'%+.{d}f' % us
-				lstr = f'%+.{d}f' % ls
-				### print latex form
-				vlatex = f'%+.{d-int(e)}f' % (v)
-				ulatex = f'%+.{d-int(e)}f' % (u)
-				llatex = f'%+.{d-int(e)}f' % (l)
-				print('& %s & $^{%s}_{%s}$' % (vlatex, ulatex, llatex))#export latex table
-				if e==0:
-					return '$%s_{%s}^{%s}$' % (vstr, lstr, ustr)
-				else:
-					return '$%s_{%s}^{%s}$ x$10^{%i}$' % (vstr, lstr, ustr, e)
 
 			### sort steps (or high prob steps might be put behind)
 			steps = steps[np.argsort(probs)]
@@ -935,19 +1066,24 @@ if __name__ == '__main__':
 					### hide upper right
 					ax[j,i].axes.set_axis_off()
 			f.close()
-			'''
-			if sin:
+			
+			if warp:
+				if component==1:
+					ax[0,0].text(-0.22, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+				else:
+					ax[0,0].text(-0.35, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+			else:
 				if component==1:
 					if radwave:
-						ax[0,0].text(-0.25, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+						ax[0,0].text(-0.5, 1.2, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
 					else:
-						ax[0,0].text(-0.25, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+						ax[0,0].text(-0.32, 1.05, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
 				else:
 					if radwave:
-						ax[0,0].text(-0.32, 1, 'c', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+						ax[0,0].text(-0.5, 1.2, 'c', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
 					else:
-						ax[0,0].text(-0.32, 1, 'd', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
-			'''
+						ax[0,0].text(-0.32, 1.05, 'd', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+			
 			return fig, ax
 
 		if sin:
@@ -958,70 +1094,46 @@ if __name__ == '__main__':
 			else: order = None
 		else: order = None
 
-		if sn:
+		if bootstrap:
 			fig, ax = corners(mockmed, np.ones(mockmed.shape[0]), bins=31, labels=free_params_name, values=bestmed, showtop=1)
+			plt.savefig('fig/corner_%icomp%s_mock.%s' % (component, suffix, plt.rcParams['savefig.format']), bbox_inches='tight')
+			plt.savefig('fig/corner_%icomp%s_mock.png' % (component, suffix), bbox_inches='tight')
 		else:
-			fig, ax = corners(steps, probs, bins=31, labels=free_params_name, values=bestmed, showtop=0.5, order=order)
-
-		'''
-		#avoid ticklabel overlap
-		if (component==1) and sin and radwave and (radnum==0):
-			for i in range(7): ax[i, 0].set_xlim(0.1973882544240669, 0.20249999)
-		elif (component==2) and sin and radwave and (radnum==0):
-			for i in range(7): ax[i, 1].set_xlim(4.4664515570296555, 4.537)
-			for i in range(7): ax[i, 2].set_xlim(0.0776, 0.0819999999)
-			for i in range(2): ax[2, i].set_ylim(0.07794477178721429, 0.08199999)
-		plt.savefig('fig/corner_%icomp%s.%s' % (component, suffix, plt.rcParams['savefig.format']), bbox_inches='tight')
-		plt.savefig('fig/corner_%icomp%s.png' % (component, suffix), bbox_inches='tight')
-		#corner.corner(steps, show_titles=True, plot_contours=False, plot_datapoints=True, quantiles=[0.16, 0.5, 0.84], range=None)#[(v-0.5,v+0.5) for v in best])
-		'''
+			fig, ax = corners(steps, probs, bins=31, labels=free_params_name, values=bestmed, showtop=0.3, order=order)
+			
+			#avoid ticklabel overlap
+			
+			if (component==1) and sin and radwave and (radnum==0):
+				for i in range(6): ax[6, i].set_ylim(8.8, 10.2)
+				ax[6, 6].set_xlim(8.8, 10.2)
+				for i in range(5): ax[5, i].set_ylim(30.75, 32.9)
+				for i in range(5,7): ax[i, 5].set_xlim(30.75, 32.9)
+				for i in range(3): ax[3, i].set_ylim(11.351, 11.48)
+				for i in range(3,7): ax[i, 3].set_xlim(11.351, 11.48)
+			elif (component==2) and sin and radwave and (radnum==0):
+				for i in range(3): ax[3, i].set_ylim(11.28,11.435)
+				for i in range(3,7): ax[i, 3].set_xlim(11.28,11.435)
+				#for i in range(3): ax[i, 3].set_xlim(30.8,32.9)
+				#for i in range(2): ax[2, i].set_ylim(0.07794477178721429, 0.08199999)
+				pass
+			
+			plt.savefig('fig/corner_%icomp%s.%s' % (component, suffix, plt.rcParams['savefig.format']), bbox_inches='tight')
+			plt.savefig('fig/corner_%icomp%s.png' % (component, suffix), bbox_inches='tight')
+			#corner.corner(steps, show_titles=True, plot_contours=False, plot_datapoints=True, quantiles=[0.16, 0.5, 0.84], range=None)#[(v-0.5,v+0.5) for v in best])
+		
 
 	### export residual, only normal warp
-	if not sin:
+	if warp:
 		data[2] -= function(data[:2], bestmed, warp=True, sin=False)
 		#print(data[:2], function(data[:2], bestmed, warp=True, sin=False))
 		np.save('residual_%icomp%s.npy' % (component, suffix), data)
 		print('Export to residual_%icomp%s.npy' % (component, suffix))
 
 
-	###prepare functions for 3D visualization
-	if False:
-		def _modelGrid(step=(1,15), **kws):
-			gridR, gridPHI = np.meshgrid(np.arange(8, 22.1, step[0]), np.arange(0, 360.1, step[1]))
-			gridZ = function((gridR, gridPHI), bestmed, **kws)
-			gridX, gridY = RPHI2XY(gridR, gridPHI)
-			return gridX, gridY, gridZ
-
-		def _smoothModelGrid(plotter, step=(1,15), **kws):
-			for phi in np.arange(0, 360, step[1]):
-				lineR = np.arange(8, 22.1, 0.2)
-				linePHI = np.repeat(phi, lineR.size)
-				lineX, lineY = RPHI2XY(lineR, linePHI)
-				lineZ = function((lineR, linePHI), bestmed, **kws)
-				xyz = np.vstack((lineX, lineY, lineZ))
-				plotter.add_lines(xyz, color='k', width=2, connected=True)
-
-			for r in np.arange(8, 23.1, 1):
-				linePHI = np.linspace(0, 360, int(360*r)//40)
-				lineR = np.repeat(r, linePHI.size)
-				lineX, lineY = RPHI2XY(lineR, linePHI)
-				lineZ = function((lineR, linePHI), bestmed, **kws)
-				xyz = np.vstack((lineX, lineY, lineZ)).T
-				plotter.add_lines(xyz, color='k', width=2, connected=True)
-	
-
-		def _residualGrid(**kws):
-			gridX, gridY, gridZ = _dataConvolve(**kws)
-			gridR, gridPHI = XY2RPHI(gridX, gridY)
-			gridResidual = gridZ - function((gridR, gridPHI), bestmed, sin=False)
-			return gridX, gridY, gridResidual
-
-
 
 	### plot face-on gplane
 	if 0:
-		def gplane(fig, ax, im=None, step=0.25, kernel=1.2, residual=False, arm=True, grid=True, draw_phi=True, rotation_arrow=False, \
-			colorbar_kws={'rect':[0.28, 0.2, 0.02, 0.22], 'orientation':'vertical'}, **kws):
+		def gplane(fig, ax, im=None, step=0.25, kernel=1.2, residual=False, arm=True, grid=True, gc=True, draw_phi=True, rotation_arrow=False, colorbar_kws={'rect':[0.28, 0.2, 0.02, 0.22], 'orientation':'vertical'}, **kws):
 
 			if im is None:
 				# if sin==False, use convolveZonGrid(X, Y, Z-Z_w, mass, ....
@@ -1029,8 +1141,11 @@ if __name__ == '__main__':
 				#Z_w = function_warp((R,PHI), p=p_1comp if component==1 else p_2comp)
 				#Z_w = function_PoggioWarp((R,PHI), cepheids=True, straight=True)
 
-				Z_sin = function((R, PHI), bestmed)
+				#Z_sin = function((R, PHI), bestmed)
 
+				#replace phi_w1 with 13kpc ring value
+				#Z_warp13 = function((R,PHI), [0.11025648, 8.6446515, 0.97143317, -7.358465264798522])
+				
 				gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(step, step), polar=False, useMask=True, generateMask=False)
 				extent=(gridX[0,0]-step/2, gridX[0,-1]+step/2, gridY[0,0]-step/2, gridY[-1,0]+step/2)
 				im = ax.imshow(gridZ, origin='lower', extent=extent, **kws)
@@ -1111,12 +1226,12 @@ if __name__ == '__main__':
 			ax.set_ylim(-15, 20)
 			
 			#Sun
-			ax.plot(0, 8.15, color='k', marker='o', markerfacecolor='none', markersize=12, markeredgewidth=1.5, zorder=200)
-			ax.plot(0, 8.15, color='k', marker='o', markersize=4, zorder=200)
+			ax.plot(0, Rsun, color='k', marker='o', markerfacecolor='none', markersize=12, markeredgewidth=1.5, zorder=200)
+			ax.plot(0, Rsun, color='k', marker='o', markersize=4, zorder=200)
 			ax.text(0, 7.8, 'Sun', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
 			#GC
 			ax.plot(0, 0, color='k', marker='*', markerfacecolor='k', markersize=18, zorder=200)
-			ax.text(0, -0.5, 'GC', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
+			if gc: ax.text(0, -0.5, 'GC', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
 			
 
 			from matplotlib.patches import Ellipse
@@ -1185,6 +1300,8 @@ if __name__ == '__main__':
 		plt.rcParams['ytick.minor.visible'] = True
 		plt.rcParams['legend.fontsize'] = 15
 		if 0:
+			#dZ_plane, SET warp=False
+
 			figscale = 0.53
 			figwidth = textwidth*figscale
 			fontscale = 1.3
@@ -1235,10 +1352,10 @@ if __name__ == '__main__':
 			ax.text(+o+0.2, 0, '$90^\circ$', va='center', ha='left', fontsize=16, fontweight='bold')
 
 			# subfigure index
-			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
+			#ax.text(-0.08, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
 			fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'png'), bbox_inches='tight')
 			fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'pdf'), bbox_inches='tight')
-		elif 1:
+		elif 0:
 			figscale = 0.39 if component==1 else 0.63
 			figwidth = textwidth*figscale
 			fontscale = 1.3
@@ -1264,15 +1381,15 @@ if __name__ == '__main__':
 			#quadrant ticks
 			l = 1.8
 			xlim = ax.get_xlim()
-			ax.plot([xlim[0], xlim[0]+l], [8.15, 8.15], '-', color='#888888')
-			ax.text(xlim[0]+0.1, 8.15-0.1, '$270^\circ$', va='top', ha='left', fontsize=12)
-			ax.text(xlim[0]+l, 8.15+1, 'Q3', va='bottom', ha='center', fontsize=15)
-			ax.text(xlim[0]+l, 8.15-1, 'Q4', va='top', ha='center', fontsize=15)
+			ax.plot([xlim[0], xlim[0]+l], [Rsun, Rsun], '-', color='#888888')
+			ax.text(xlim[0]+0.1, Rsun-0.1, '$270^\circ$', va='top', ha='left', fontsize=12)
+			ax.text(xlim[0]+l, Rsun+1, 'Q3', va='bottom', ha='center', fontsize=15)
+			ax.text(xlim[0]+l, Rsun-1, 'Q4', va='top', ha='center', fontsize=15)
 
-			ax.plot([xlim[1]-l, xlim[1]], [8.15, 8.15], '-', color='#888888')
-			ax.text(xlim[1]-0.1, 8.15-0.1, '$90^\circ$', va='top', ha='right', fontsize=12)
-			ax.text(xlim[1]-l, 8.15+1, 'Q2', va='bottom', ha='center', fontsize=15)
-			ax.text(xlim[1]-l, 8.15-1, 'Q1', va='top', ha='center', fontsize=15)
+			ax.plot([xlim[1]-l, xlim[1]], [Rsun, Rsun], '-', color='#888888')
+			ax.text(xlim[1]-0.1, Rsun-0.1, '$90^\circ$', va='top', ha='right', fontsize=12)
+			ax.text(xlim[1]-l, Rsun+1, 'Q2', va='bottom', ha='center', fontsize=15)
+			ax.text(xlim[1]-l, Rsun-1, 'Q1', va='top', ha='center', fontsize=15)
 
 			ylim = ax.get_ylim()
 			ax.plot([0, 0], [ylim[0], ylim[0]+l], '-', color='#888888')
@@ -1281,7 +1398,7 @@ if __name__ == '__main__':
 			ax.plot([0, 0], [ylim[1]-l, ylim[1]], '-', color='#888888')
 			ax.text(-0.1, ylim[1]-0.1, '$180^\circ$', rotation=90, va='top', ha='right', fontsize=12)
 
-			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
+			#ax.text(-0.08, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
 			fig.savefig('fig/dZ_plane_%1icomp_arm.%s' % (component, 'png'), bbox_inches='tight')
 			fig.savefig('fig/dZ_plane_%1icomp_arm.%s' % (component, 'pdf'), bbox_inches='tight')
 		elif 0:
@@ -1335,7 +1452,7 @@ if __name__ == '__main__':
 			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
 			fig.savefig('fig/dZ_plane_%1icomp_greatwave.%s' % (component, 'pdf'), bbox_inches='tight')
 			#fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'pdf'), bbox_inches='tight')
-		elif 0:
+		elif 1:
 			# compare
 			figscale = 0.53
 			figwidth = textwidth*figscale
@@ -1366,32 +1483,32 @@ if __name__ == '__main__':
 			step = 0.25
 			gridX, gridY, gridZ = convolveZonGrid(X, Y, Z, mass, step=(step, step), polar=False, useMask=True, generateMask=False)
 			extent=(gridX[0,0]-step/2, gridX[0,-1]+step/2, gridY[0,0]-step/2, gridY[-1,0]+step/2)
-			gplane(fig, ax[0], im = gridZ, extent=extent, origin='lower', arm=False, draw_phi=False, colorbar_kws={'rect':[0.20, 0.68, 0.015, 0.2]}, **kws)
+			gplane(fig, ax[0], im = gridZ, extent=extent, origin='lower', arm=False, draw_phi=False, gc=False, colorbar_kws={'rect':[0.20, 0.68, 0.015, 0.2]}, **kws)
 			ax[0].set_xlabel('')
 			ax[0].set_ylabel('')
-			#ax[0].plot(0, 8.15, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
-			#ax[0].plot(0, 8.15, color='k', marker='o', markersize=4, zorder=200)
+			#ax[0].plot(0, Rsun, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
+			#ax[0].plot(0, Rsun, color='k', marker='o', markersize=4, zorder=200)
 			#ax[0].text(0, 7.2,, 'Sun', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
 			ax[0].set_yticks(np.arange(0,20,5))
 
 			#ax[1].set_title('Young giants (Poggio et al. 2025)')
 			imgPoggio = np.load('PoggioFigure/Young_giants_fitstraightLON_DZ_residuals_fit.npy')
-			extent = [-15., 15., -15.+8.15, 15.+8.15]
-			gplane(fig, ax[1], im = imgPoggio, extent=extent, arm=False, draw_phi=False, colorbar_kws={'visible':False}, **kws)
+			extent = [-15., 15., -15.+Rsun, 15.+Rsun]
+			gplane(fig, ax[1], im = imgPoggio, extent=extent, arm=False, draw_phi=False, gc=False, colorbar_kws={'visible':False}, **kws)
 			ax[1].set_xlabel('')
 			ax[1].set_ylabel('')
 			#ax[1].tick_params(labelleft=False)
-			#ax[1].plot(8.15, 0, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
-			#ax[1].plot(8.15, 0, color='k', marker='o', markersize=4, zorder=200)
+			#ax[1].plot(Rsun, 0, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
+			#ax[1].plot(Rsun, 0, color='k', marker='o', markersize=4, zorder=200)
 			#ax[1].text(7.2, -0.6, 'Sun', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
 			ax[1].set_yticks(np.arange(0,20,5))
 
 			#ax[2].set_title('Cepheids (Poggio et al. 2025)')
 			imgPoggio = np.load('PoggioFigure/Cepheids_fitstraightLON_DZ_residuals_fit.npy')
-			extent = [-15., 15., -15.+8.15, 15.+8.15]
-			gplane(fig, ax[2], im = imgPoggio, extent=extent, arm=False, draw_phi=False, colorbar_kws={'visible':False}, **kws)
-			#ax[2].plot(8.15, 0, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
-			#ax[2].plot(8.15, 0, color='k', marker='o', markersize=4, zorder=200)
+			extent = [-15., 15., -15.+Rsun, 15.+Rsun]
+			gplane(fig, ax[2], im = imgPoggio, extent=extent, arm=False, draw_phi=False, gc=False, colorbar_kws={'visible':False}, **kws)
+			#ax[2].plot(Rsun, 0, color='k', marker='o', markerfacecolor='none', markersize=12, zorder=200)
+			#ax[2].plot(Rsun, 0, color='k', marker='o', markersize=4, zorder=200)
 			#ax[2].text(7.2, -0.6, 'Sun', ha='center', va='top', fontsize=20, fontweight='normal', zorder=200)
 			ax[2].set_yticks(np.arange(0,20,5))
 			ax[2].set_xlabel('X (kpc)')
@@ -1407,8 +1524,13 @@ if __name__ == '__main__':
 			ax[0].set_ylim(4.5, 15.5)
 			#ax[2].set_ylabel('')
 			#ax[1].set_xlim(-15, 15)
-			#ax[1].set_ylim(-15+8.15, 19)
+			#ax[1].set_ylim(-15+Rsun, 19)
+			ax[0].text(-0.08, 1, 'a', font=subfigureIndexFont, transform = ax[0].transAxes, ha='right', va='top')
+			ax[1].text(-0.08, 1, 'b', font=subfigureIndexFont, transform = ax[1].transAxes, ha='right', va='top')
+			ax[2].text(-0.08, 1, 'c', font=subfigureIndexFont, transform = ax[2].transAxes, ha='right', va='top')
+
 			fig.savefig('fig/compare_dZ_plane_%1icomp2v.%s' % (component, 'pdf'), bbox_inches='tight')
+			fig.savefig('fig/compare_dZ_plane_%1icomp2v.%s' % (component, 'png'), bbox_inches='tight')
 			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')			
 		else:
 			# compare
@@ -1457,12 +1579,12 @@ if __name__ == '__main__':
 
 			ax[1,0].set_title('Cepheids (Poggio et al. 2025)')
 			imgPoggio = np.load('PoggioFigure/Cepheids_fitstraightLON_DZ_residuals_fit.npy')
-			extent = [-15., 15., -15.+8.15, 15.+8.15]
+			extent = [-15., 15., -15.+Rsun, 15.+Rsun]
 			gplane(fig, ax[1,0], im = imgPoggio, extent=extent, arm=False, draw_phi=False, colorbar_kws={'visible':False}, **kws)
 
 			ax[1,1].set_title('Young giants (Poggio et al. 2025)')
 			imgPoggio = np.load('PoggioFigure/Young_giants_fitstraightLON_DZ_residuals_fit.npy')
-			extent = [-15., 15., -15.+8.15, 15.+8.15]
+			extent = [-15., 15., -15.+Rsun, 15.+Rsun]
 			gplane(fig, ax[1,1], im = imgPoggio, extent=extent, arm=False, draw_phi=False, colorbar_kws={'rect':[0.89, 0.138, 0.015, 0.304]}, **kws)
 			ax[1,1].set_xlabel('')
 			ax[1,1].set_ylabel('')
@@ -1481,15 +1603,50 @@ if __name__ == '__main__':
 			#ax[1,1].set_ylim(-5, 18)
 			#ax[2].set_ylabel('')
 			#ax[1].set_xlim(-15, 15)
-			#ax[1].set_ylim(-15+8.15, 19)
+			#ax[1].set_ylim(-15+Rsun, 19)
 			fig.savefig('fig/compare_dZ_plane_%1icomp.%s' % (component, 'pdf'), bbox_inches='tight')
 			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')
 
 
 
+	###prepare functions for 3D visualization
+	if False:
+		def _modelGrid(step=(1,15), **kws):
+			gridR, gridPHI = np.meshgrid(np.arange(8, 22.1, step[0]), np.arange(0, 360.1, step[1]))
+			gridZ = function((gridR, gridPHI), bestmed, **kws)
+			gridX, gridY = RPHI2XY(gridR, gridPHI)
+			return gridX, gridY, gridZ
+
+		def _smoothModelGrid(plotter, step=(1,15), **kws):
+			for phi in np.arange(0, 360, step[1]):
+				lineR = np.arange(8, 22.1, 0.2)
+				linePHI = np.repeat(phi, lineR.size)
+				lineX, lineY = RPHI2XY(lineR, linePHI)
+				lineZ = function((lineR, linePHI), bestmed, **kws)
+				xyz = np.vstack((lineX, lineY, lineZ))
+				plotter.add_lines(xyz, color='k', width=2, connected=True)
+
+			for r in np.arange(8, 23.1, 1):
+				linePHI = np.linspace(0, 360, int(360*r)//40)
+				lineR = np.repeat(r, linePHI.size)
+				lineX, lineY = RPHI2XY(lineR, linePHI)
+				lineZ = function((lineR, linePHI), bestmed, **kws)
+				xyz = np.vstack((lineX, lineY, lineZ)).T
+				plotter.add_lines(xyz, color='k', width=2, connected=True)
+	
+
+		def _residualGrid(**kws):
+			gridX, gridY, gridZ = _dataConvolve(**kws)
+			gridR, gridPHI = XY2RPHI(gridX, gridY)
+			gridResidual = gridZ - function((gridR, gridPHI), bestmed, sin=False)
+			return gridX, gridY, gridResidual
+
+
+
 	### 3D visualization with plotly (finally adopted)
-	if 0 and not sin:
+	if 0 and warp:
 		import plotly.graph_objs as go
+		from shared import rad_sep, to_subscript
 		figscale = 0.5
 		fontscale = 1.3
 
@@ -1516,7 +1673,6 @@ if __name__ == '__main__':
 		wires = []
 		line_marker = dict(color='#000000', width=5)#, colorscale='RdYlBu_r', cmin=-0.5, cmax=0.5)
 		### R axis
-		from shared import rad_sep, to_subscript
 		for phi in list(range(323, 155, -12))+rad_sep:
 			#for phi in np.arange(0, 360, 15):
 			lineR = np.arange(8.5, 20.6, 0.5)
@@ -1537,12 +1693,13 @@ if __name__ == '__main__':
 
 		### phi sector text
 		sectorPhi = np.array([(p1+p2)/2 for p1,p2 in zip(rad_sep[:-1], rad_sep[1:]) if p1*p2>0])#avoid az=0
+		sectorPhi[-2] += 1.5 #shift phi_14
 		sectorR = np.repeat(22.5, len(sectorPhi))
 		sectorZ = function((sectorR, sectorPhi), bestmed)
-		sectorZ[sectorZ>2.21] = 2.21
+		sectorZ[sectorZ>2.41] = 2.41
 		sectorX, sectorY = RPHI2XY(sectorR, sectorPhi)
-		#sectorT = ['ϕ'+to_subscript(i+1) for i in range(len(sectorPhi))] # different format
-		sectorT = ['$\huge \phi_{%i}$' % (i+1) for i in range(len(sectorPhi))]
+		sectorT = ['ϕ'+to_subscript(i+1) for i in range(len(sectorPhi))] # different format
+		#sectorT = ['$\huge \phi_{%i}$' % (i+1) for i in range(len(sectorPhi))]
 		sectorText = [dict(x=sectorX[i], y=sectorY[i], z=sectorZ[i], text=sectorT[i], showarrow=False, \
 				xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=int(30*fontscale))) for i in range(len(sectorT))]
 
@@ -1551,9 +1708,9 @@ if __name__ == '__main__':
 		annulusPhi = np.repeat(-40, len(annulusR))
 		annulusZ = function((annulusR, annulusPhi), bestmed)
 		annulusX, annulusY = RPHI2XY(annulusR, annulusPhi)
-		#annulusT = np.array(['R'+to_subscript(i+1) for i in range(len(annulusR))]) # different format
-		annulusT = ['$\huge R_{%i}$' % (i+1) for i in range(len(annulusR))]
-		annulusText = [dict(x=annulusX[i], y=annulusY[i], z=annulusZ[i], text='$\huge R_{%i}$' % (i+1), showarrow=False, \
+		annulusT = np.array(['R'+to_subscript(i+1) for i in range(len(annulusR))]) # different format
+		#annulusT = ['$\huge R_{%i}$' % (i+1) for i in range(len(annulusR))]
+		annulusText = [dict(x=annulusX[i], y=annulusY[i], z=annulusZ[i], text=annulusT[i], showarrow=False, \
 			xanchor = 'center', xshift=5, yanchor='middle', font=dict(color='#444444', size=int(20*fontscale))) for i in [0,8]]
 		
 		sun = go.Scatter3d(x=[0], y=[8.15], z=[0], mode='markers', \
@@ -1615,7 +1772,7 @@ if __name__ == '__main__':
 					#ticktext = ["%+i" % y for y in range(-24, 25, 8)],
 					**tick_kws),
 				zaxis=dict(title = '',#dict(text='Z (kpc)', font=title_font),
-					range = [-2, 2 if component==1 else 2.21],
+					range = [-2, 2 if component==1 else 2.41],
 					tickvals = np.arange(-1, 3, 1),
 					#ticktext = ["%+i" % z for z in range(-1, 3, 1)],
 					zerolinecolor='#000000', zerolinewidth=5, **tick_kws),
@@ -1652,14 +1809,15 @@ if __name__ == '__main__':
 			showarrow=False, font=dict(color='rgb(37,63,98)', size=int(40*fontscale), weight='bold'))
 
 		### panel ID
-		if component==1:
-			from shared import subfigureIndexFont
-			#fig.add_annotation(x=0.05, xref='paper', y=0.95, yref='paper', text='a', showarrow=False, font=dict(color='black', family="Arial Black", size=int(35/figscale)))
+		#if component==1:
+		#	from shared import subfigureIndexFont
+		#	fig.add_annotation(x=0.05, xref='paper', y=0.95, yref='paper', text='a', showarrow=False, font=dict(color='black', family="Arial Black", size=int(35/figscale)))
 
 		### Show the plot
 		if 0: fig.show()
 		else:
 			fig.write_image("fig/median_model_%icomp.pdf" % component)#, scale=3)
+			fig.write_image("fig/median_model_%icomp.png" % component)#, scale=3)
 			#fig.write_html("fig/median_model_%icomp.html" % component)#, scale=3)
 
 
@@ -2206,7 +2364,7 @@ if __name__ == '__main__':
 
 
 	### interactive online figure
-	if 0 and not sin:
+	if 1 and warp:
 		from shared import *
 		import plotly.graph_objs as go
 		figscale = 1
@@ -2536,6 +2694,7 @@ if __name__ == '__main__':
 		else:
 			fig.write_image("fig/dZ_%icomp.png" % (component))#, scale=3)
 			fig.write_html("fig/dZ_%icomp.html" % (component))#, scale=3)
+
 
 
 	plt.show()

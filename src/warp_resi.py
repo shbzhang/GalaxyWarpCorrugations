@@ -1,5 +1,6 @@
 ### plot Az-(Z-warp model) of MCs in different Rgal
 
+import os,glob
 import numpy as np
 import pylab as pl
 import scipy.interpolate as sp_interp
@@ -19,6 +20,7 @@ if __name__ == '__main__':
 	figwidth = textwidth*figscale
 	az_min, az_max = -30, 165
 
+	'''
 	out_data = np.loadtxt('out_para.txt',comments='#')
 	osc_data = np.loadtxt('osc2_para.txt',comments='#')
 	per_data = np.loadtxt('per_para.txt',comments='#')
@@ -37,6 +39,10 @@ if __name__ == '__main__':
 	vv = data[2]
 	mass = data[7]
 	com = data[8]
+	'''
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data()
+	zz -= function_warp((rr, az), p=p_1comp if comp==1 else p_2comp)
+
 	scatter_size, scatter_color = mass_distribute(mass)
 
 	theta_axis = np.linspace(-30,170,200)
@@ -119,6 +125,12 @@ if __name__ == '__main__':
 				zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], circ=p_circ1comp if comp==1 else p_circ2comp)
 				ax[i].plot(phiaxis, zaxis, **ring_kws_sin)
 
+				#plot realizations
+				#for f in glob.glob(os.path.join('oneCompExc/steps_ringwave_???pc_*mass*')):
+				#	print(f)
+				#	for p_circ in np.load(f)[-300:]:
+				#		zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], circ=p_circ)
+				#		ax[i].plot(phiaxis, zaxis, color=colorCO1, lw=0.5, alpha=1)
 
 		'''
 		### plot warp models
@@ -222,10 +234,10 @@ if __name__ == '__main__':
 		elif i==9: upper.set_xticklabels(['  0', '20', '40', '60 kpc', None]) # add kpc at the end
 		#if i==9: ax[i].legend()
 		'''
-	#if comp==1:
-	#	ax[0].text(-0.2, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
-	#else:
-	#	ax[0].text(-0.2, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	if comp==1:
+		ax[0].text(-0.25, 1.02, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	else:
+		ax[0].text(-0.25, 1.02, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
 
 	if ceph: bn = 'fig/az_dz_MC_Ceph_%icomp%s' % (comp, suffix)

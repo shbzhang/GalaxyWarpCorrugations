@@ -99,6 +99,8 @@ if __name__ == '__main__':
 	figwidth = textwidth*figscale
 	#col_mc = '#4169e1'#'#2f7fa0'
 
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data(arm='out')
+	'''
 	data = np.loadtxt('out_para.txt',comments='#')
 	ll = data[:,0]
 	bb = data[:,1]
@@ -107,6 +109,7 @@ if __name__ == '__main__':
 	zz = data[:,14]
 	az = data[:,19]
 	mass = data[:,7]/data[:,8]
+	'''
 	print('Az range:', az.min(), az.max())
 
 
@@ -264,8 +267,8 @@ if __name__ == '__main__':
 		powerAxes.patch.set_alpha(0.0)
 
 
-	#ax[0].text(-0.15, 1.0, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
-	#ax[1].text(-0.15, 1.0, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
+	ax[0].text(-0.15, 1.0, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	ax[1].text(-0.15, 1.0, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
 
 	plt.savefig('fig/out_warp_corrugation_b.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
 	plt.savefig('fig/out_warp_corrugation_b.png', bbox_inches='tight')

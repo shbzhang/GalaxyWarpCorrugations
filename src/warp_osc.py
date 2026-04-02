@@ -8,18 +8,18 @@ from scipy.stats import norm
 import scipy.optimize as sp_opt
 from shared import *
 
-if __name__ == '__main__':
-	figscale = 0.45
-	figwidth = textwidth*figscale
+def plot(ax=None, figscale=0.45):
+	#Figure
+	if ax is None:
+		figwidth = textwidth*figscale
+		fig, ax = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(figwidth, figwidth*0.95))
+		plt.subplots_adjust(left=0.13, right=0.98, wspace=0.1, hspace=0.06)
+	else:
+		fig = ax[0].figure
 
-	data = np.loadtxt('osc2_para.txt',comments='#')
-	ll = data[:,0]
-	bb = data[:,1]
-	vv = data[:,2]
-	rr = data[:,11]
-	zz = data[:,14]
-	az = data[:,19]
-	mass = data[:,7]/data[:,8]
+
+	#Prepare Data
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data(arm='osc')
 
 	### calculate arm
 	azmin = az.min()-3
@@ -28,12 +28,6 @@ if __name__ == '__main__':
 	R = function_arm(PHI, best_osc)
 	print('Az range:', az.min(), az.max())
 	print('Az plot range:', azmin, azmax)
-
-
-	fig, ax = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(figwidth, figwidth*0.95))
-	plt.subplots_adjust(left=0.13, right=0.98, wspace=0.1, hspace=0.06)
-	plt.rcParams['xtick.direction'] = 'in'
-
 
 
 	### plot cloud
@@ -69,7 +63,7 @@ if __name__ == '__main__':
 	ax[0].set_yticks(np.arange(-3, 3, 0.5))
 	ax[0].set_xlim(azmin, azmax)
 	ax[0].set_ylim(-0.7, 1.5)
-	ax[0].set_ylabel('Z (kpc)')
+	ax[0].set_ylabel('Z (kpc)', labelpad=-5)
 
 	# upper tick in kpc
 	import scipy.interpolate as sp_interp
@@ -95,7 +89,6 @@ if __name__ == '__main__':
 	upper.set_xlim(azmin, azmax)
 
 
-
 	### plot cloud
 	#zz_res = zz - function_warp((rr, az))
 	zz_res = zz - function_warp( (function_arm(az, best_osc), az), p=p_1comp)
@@ -115,12 +108,13 @@ if __name__ == '__main__':
 	ax[1].plot([PHI[0], PHI[-1]], [0, 0], **arm_kws_co1)
 
 	ax[1].set_yticks(np.arange(-3, 3, 0.5))
+	ax[1].set_xlim(azmin, azmax)
 	ax[1].set_ylim([-0.8, 0.8])
 	#ax[1].yticks([-500,0,500,1000,1500],['-500','0','500','1000','1500'],fontsize=14,fontweight=1.8)
 	#ax[1].xticks([-25,0,25,50,75,100,125,150],['-25','0','25','50','75','100','125','150'],fontsize=14,fontweight=1.8)
 	ax[1].grid(True, ls='--', alpha=0.4)
 	ax[1].set_xlabel('Galactocentric Azimuth (deg)')
-	ax[1].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
+	ax[1].set_ylabel('$\mathbf{\Delta}$Z (kpc)', labelpad=-5)
 
 	insert_arm_plot(ax[0], [0.25, 0.02, 0.36, 0.36], boldArm='osc', boldRange=[azmin,azmax])
 
@@ -161,6 +155,10 @@ if __name__ == '__main__':
 		#powerAxes.yaxis.set_visible(False)
 		powerAxes.patch.set_alpha(0.0)
 
+	return fig, ax
+
+if __name__ == '__main__':
+	fig, ax = plot()
 
 	plt.savefig('fig/osc_warp_corrugation.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
 	plt.savefig('fig/osc_warp_corrugation.png', bbox_inches='tight')

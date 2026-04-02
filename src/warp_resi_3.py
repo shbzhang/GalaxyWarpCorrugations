@@ -1,5 +1,6 @@
 ### plot Az-(Z-warp model) of MCs in different Rgal
 
+import os, glob
 import numpy as np
 import pylab as pl
 import scipy.interpolate as sp_interp
@@ -8,6 +9,7 @@ import scipy.optimize as sp_opt
 from shared import *
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 suffix = ''#'_xf'
 comp = 1
@@ -21,6 +23,7 @@ if __name__ == '__main__':
 	figwidth = textwidth*figscale
 	az_min, az_max = -30, 165
 
+	'''
 	out_data = np.loadtxt('out_para.txt', comments='#')
 	osc_data = np.loadtxt('osc2_para.txt', comments='#')
 	per_data = np.loadtxt('per_para.txt', comments='#')
@@ -39,6 +42,10 @@ if __name__ == '__main__':
 	vv = data[2]
 	mass = data[7]
 	com = data[8]
+	'''
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data()
+	zz -= function_warp((rr, az), p=p_1comp if comp==1 else p_2comp)
+
 	scatter_size, scatter_color = mass_distribute(mass)
 
 	theta_axis = np.linspace(-30,170,200)
@@ -69,11 +76,14 @@ if __name__ == '__main__':
 
 		ax.plot(azcen, zcen, '-', **ring_kws_bin)
 		### fill gap with dash
-		idx = np.isfinite(zcen)
-		#ax.plot(azcen[idx], zcen[idx], '--', **ring_kws_bin)
+		zidx = np.isfinite(zcen)
+		#ax.plot(azcen[zidx], zcen[zidx], '--', **ring_kws_bin)
 
 		### plot errorbar
-		ax.errorbar(azcen[idx], zcen[idx], yerr=zrms[idx]*2.355/2., fmt='^', c='#777777', markersize=0.05, elinewidth=1, capsize=1.1, zorder=15)
+		ax.errorbar(azcen[zidx], zcen[zidx], yerr=zrms[zidx]*2.355/2., fmt='^', c='#777777', markersize=0.05, elinewidth=1, capsize=1.1, zorder=15)
+
+		#azcen, azrms, zcen, zrms = bin_data(az[idx], zz[idx], weight[idx], grid=np.arange(160, -50, -6), width=12, method='gauss')
+		#ax.errorbar(azcen, zcen, yerr=zrms*2.355/2., color='r', lw=5, alpha=0.5, zorder=100)
 
 		### plot H line
 		if comp==1:
@@ -120,16 +130,31 @@ if __name__ == '__main__':
 		elif ob:
 			starIdx = (starR >= gr1) & (starR < gr2)
 			starModelZ = function_warp((starR, starAz), p=p_1comp if comp==1 else p_2comp)
-			ax[i].scatter(starAz[starIdx], starZ[starIdx]-starModelZ[starIdx], s=3, c='orangered', zorder=9, alpha=0.3)#, **rad_kws_mc)
+			ax.scatter(starAz[starIdx], starZ[starIdx]-starModelZ[starIdx], s=3, c='orangered', zorder=9, alpha=0.3)#, **rad_kws_mc)
 			azcen, azrms, zcen, zrms = bin_data(starAz[starIdx], starZ[starIdx]-starModelZ[starIdx], np.ones(starIdx.sum()), grid=np.arange(160, -50, -6), width=6, method='gauss')
-			ax[i].plot(azcen, zcen, '-', color='darkred', zorder=200, alpha=0.8)
+			ax.plot(azcen, zcen, '-', color='darkred', zorder=200, alpha=0.8)
+		
 		if 1:
 			### model waves
 			raxis = np.full(400, gr)
 			phiaxis = np.linspace(-50, 180, 400)
 			zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], circ=p_circ1comp if comp==1 else p_circ2comp)
 			#if ceph: ring_kws_sin['color'] = '#2074b0'
+			ring_kws_sin['lw']=2
 			ax.plot(phiaxis, zaxis, **ring_kws_sin)
+
+		#c interval
+		if 1 and (comp == 1):
+			modelFiles = glob.glob('oneCompExc/steps_ringwave_*pc_*mass.npy')
+			print(len(modelFiles))
+			steps = [np.load(f)[-50:] for f in modelFiles]
+			steps = np.vstack(steps)
+			zmodels = []
+			for s in steps:
+				zmodels.append(np.array([phiaxis, function_warp((raxis, phiaxis), p=[0,0,0,0,0], circ=s)]).T)
+			lc = LineCollection(zmodels, color='peachpuff', alpha=0.15, lw=1, zorder=10)
+			lc.set_rasterized(True)
+			ax.add_collection(lc)
 
 
 		### plot gr text
@@ -170,7 +195,7 @@ if __name__ == '__main__':
 		if ceph: subfigureIndex = 'a'
 		else: subfigureIndex = 'b'
 	else: subfigureIndex = 'd'
-	#ax.text(-0.1, 0.95, subfigureIndex, color='black', font=subfigureIndexFont, transform=ax.transAxes)
+	#ax.text(-0.12, 0.95, subfigureIndex, color='black', font=subfigureIndexFont, transform=ax.transAxes)
 
 	if ceph: bn = 'fig/az_dz_MC_Ceph_%icomp%s_single' % (comp, suffix)
 	elif ob: bn = 'fig/az_dz_MC_OB_%icomp%s_single' % (comp, suffix)

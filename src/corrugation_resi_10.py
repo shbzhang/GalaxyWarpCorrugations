@@ -1,5 +1,6 @@
 ### plot Az-(Z-warp model) of MCs in different Rgal
 
+import os, glob
 import numpy as np
 import pylab as pl
 import scipy.interpolate as sp_interp
@@ -8,6 +9,7 @@ import scipy.optimize as sp_opt
 from shared import *
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 
 suffix = ''#'_xf'
@@ -20,6 +22,7 @@ if __name__ == '__main__':
 	figscale = 0.47
 	figwidth = textwidth*figscale
 
+	'''
 	out_data = np.loadtxt('out_para%s.txt' % suffix, comments='#')
 	osc_data = np.loadtxt('osc2_para%s.txt' % suffix, comments='#')
 	per_data = np.loadtxt('per_para%s.txt' % suffix, comments='#')
@@ -38,6 +41,9 @@ if __name__ == '__main__':
 	vv = data[2]
 	mass = data[7]
 	com = data[8]
+	'''
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data()
+	zz -= function_warp((rr, az), p=p_1comp if comp==1 else p_2comp)
 
 	print('az range', az.min(), az.max())
 	scatter_size, scatter_color = mass_distribute(mass)
@@ -100,6 +106,17 @@ if __name__ == '__main__':
 				zaxis = function_warp((raxis, phiaxis), p=[0,0,0,0,0], rad=p_rad1comp if comp==1 else p_rad2comp)
 				ax.plot(raxis, zaxis, **rad_kws_sin)
 
+				modelFiles = glob.glob('oneCompExc/steps_radwave0_*pc_*mass.npy')
+				print(len(modelFiles))
+				steps = [np.load(f)[-50:] for f in modelFiles]
+				steps = np.vstack(steps)
+				zmodels = []
+				for s in steps:
+					zmodels.append(np.array([raxis, function_warp((raxis, phiaxis), p=[0,0,0,0,0], rad=[s,*p_rad1comp[1:]])]).T)
+				lc = LineCollection(zmodels, color='peachpuff', alpha=0.1, lw=1, zorder=10)
+				lc.set_rasterized(True)
+				ax.add_collection(lc)
+
 		### plot h line
 		if comp==1:
 			rad_kws_co1['zorder']=0
@@ -143,7 +160,7 @@ if __name__ == '__main__':
 		if ceph: subfigureIndex = 'b'
 		else: subfigureIndex = 'c'
 	else: subfigureIndex = 'd'
-	#ax.text(-0.1, 0.95, subfigureIndex, color='black', font=subfigureIndexFont, transform=ax.transAxes)
+	#ax.text(-0.12, 0.95, subfigureIndex, color='black', font=subfigureIndexFont, transform=ax.transAxes)
 
 	if ceph: bn = 'fig/r_dz_MC_Ceph_%icomp%s_single' % (comp, suffix)
 	elif ob: bn = 'fig/r_dz_MC_OB_%icomp%s_single' % (comp, suffix)

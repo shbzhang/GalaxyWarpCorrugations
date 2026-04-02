@@ -13,6 +13,8 @@ if __name__ == '__main__':
 	figscale = 0.58
 	figwidth = textwidth*figscale
 
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data(arm='out')
+	'''
 	data = np.loadtxt('out_para.txt',comments='#')
 	ll = data[:,0]
 	bb = data[:,1]
@@ -21,7 +23,7 @@ if __name__ == '__main__':
 	zz = data[:,14]
 	az = data[:,19]
 	mass = data[:,7]/data[:,8]
-
+	'''
 	### calculate arm
 	azmin = az.min()-3
 	azmax = az.max()+5
@@ -211,8 +213,8 @@ if __name__ == '__main__':
 		ax[1].text(-0.06, 1, 'd', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
 	else:
 		pass
-		#ax[0].text(-0.08, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
-		#ax[1].text(-0.08, 1, 'c', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
+		#ax[0].text(-0.09, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+		#ax[1].text(-0.09, 1, 'c', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
 	
 	if ceph: bn = 'fig/out_warp_corrugation_Ceph'
 	else: bn = 'fig/out_warp_corrugation'

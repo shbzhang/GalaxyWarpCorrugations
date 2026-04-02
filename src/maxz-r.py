@@ -92,7 +92,8 @@ a1    = 0.09363
 Rw1   = 8.568
 bw1   = 1.050
 phi_w1 = -0.7050
-
+from shared import p_1comp, p_2comp, function_warp
+a0, a1, Rw1, bw1, phi_w1 = p_1comp
 def co_warp_max_over_theta(R, a1, Rw1, bw1, phi_w1, theta_deg=THETA_DEG):
     """
     Max CO m=1 warp amplitude at each R by scanning theta in [-30°, 170°].
@@ -115,7 +116,7 @@ a2_m12 = -0.01241
 Rw2_m12 = 12.71
 bw2_m12 = 2.031
 phi_w2_m12 = -20.45  # 弧度
-
+a0, a1_m12, Rw1_m12, phi_w1_m12, a2_m12, Rw2_m12, bw2_m12, phi_w2_m12 = p_2comp
 def co_m12_warp_max_over_theta(R, a1, Rw1, phi_w1, a2, Rw2, bw2, phi_w2, theta_deg=THETA_DEG):
     """
     Calculate maximum CO m=1,2复合翘曲模型振幅 by scanning over theta
@@ -193,6 +194,7 @@ h_R_co_m12 = co_m12_warp_max_over_theta(R, a1_m12, Rw1_m12, phi_w1_m12, a2_m12, 
 
 # 创建优化的图形 - 缩小图形尺寸
 fig, ax1 = plt.subplots(1, 1, figsize=(6.5, 4.5))
+plt.subplots_adjust(left=0.11, right=0.97, top=0.95, bottom=0.1)
 
 # =============================================================================
 # 视觉优化方案：更新图例标签
@@ -219,8 +221,29 @@ ax1.plot(R, h_R_hi, color='#2E8B57', linewidth=2.5, label='HI (Levine+2006)',
          alpha=0.8, linestyle='-.')
 
 # 4. 分子气体 - 特别突出显示（我们的结果）
-ax1.plot(R, h_R_co_max, color='r', linewidth=3.5, label='CO m=1 - This work', 
+ax1.plot(R, h_R_co_max, color='r', linewidth=2.5, label='CO m=1 - This work', 
          alpha=0.9, linestyle='-')
+
+import glob
+modelFiles = glob.glob('oneCompExc/steps_errD_*pc_*mass.npy')
+steps = [np.load(f)[-500:] for f in modelFiles]
+steps = np.vstack(steps)
+
+a0, a1, Rw1, bw1, phi_w1 = p_1comp
+x = np.broadcast_arrays(R, phi_w1+90)
+zmodels = []
+for s in steps[:]:
+    a1, Rw1, bw1, phi_w1 = s
+    ma = co_warp_max_over_theta(R, a1, Rw1, bw1, phi_w1, theta_deg=THETA_DEG)
+    zmodels.append(function_warp(x, p=[0, *s]))
+cinterval = np.percentile(zmodels, [16, 84], axis=0)
+ax1.fill_between(R, *cinterval, color='r', edgecolor='none', alpha=0.3, zorder=0)
+cinterval = np.percentile(zmodels, [2.5, 97.5], axis=0)
+ax1.fill_between(R, *cinterval, color='r', edgecolor='none', alpha=0.2, zorder=0)
+cinterval = np.percentile(zmodels, [0, 100], axis=0)
+#ax1.fill_between(R, *cinterval, color='r', edgecolor='none', alpha=0.2, zorder=0)
+
+
 #ax1.plot(R, h_R_co_m12, color='#FF4500', linewidth=4.5, label='CO m=1,2 - This work', 
 #         alpha=1.0, linestyle='-', marker='')
 
@@ -245,10 +268,13 @@ ax1.text(14, 0.2, 'YOUNG \nPOPULATIONS', fontsize=10, color='#1E90FF',
          ha='center', va='center', weight='bold',
          bbox=dict(boxstyle="round,pad=0.3", facecolor='#F0F8FF', alpha=0.8))
 
+ax1.text(-0.15, 0.96, 'a', fontsize=18, transform=ax1.transAxes)
+
 plt.tight_layout()
-ax1.text(-0.08, 1., "a", fontsize=11,transform=ax1.transAxes, va="top", ha="right",
-         fontweight="bold")
-plt.savefig("multi_warp_model.png", dpi=300, bbox_inches="tight")
+#ax1.text(-0.08, 1., "a", fontsize=11,transform=ax1.transAxes, va="top", ha="right",
+#         fontweight="bold")
+plt.savefig("fig/multi_warp_model.pdf", dpi=300, bbox_inches="tight")
+plt.savefig("fig/multi_warp_model.png", dpi=300, bbox_inches="tight")
 # 打印分组统计信息，特别突出CO结果
 print("=" * 100)
 print("GALACTIC WARP AMPLITUDES BY POPULATION TYPE")

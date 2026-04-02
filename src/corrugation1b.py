@@ -1,5 +1,6 @@
 ### plot Rgal-Z of MCs in different Az sectors
 
+import os, glob
 import numpy as np
 import pylab as pl
 import scipy.interpolate as sp_interp
@@ -8,15 +9,17 @@ import scipy.optimize as sp_opt
 from shared import *
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 suffix = ''#'_xf'
-ceph = 1
+ceph = 0
 ob = 0
 
 if __name__ == '__main__':
 	figscale = 0.8#0.88 if ceph else 1.0
 	figwidth = textwidth*figscale
 
+	'''
 	out_data = np.loadtxt('out_para.txt',comments='#')
 	osc_data = np.loadtxt('osc2_para.txt',comments='#')
 	per_data = np.loadtxt('per_para.txt',comments='#')
@@ -36,10 +39,23 @@ if __name__ == '__main__':
 	mass = data[7]
 	#mass = (np.vstack((osc_data*3, out_data*1.5, per_data)).T)[7]
 	com = data[8]
+	'''
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data()
 
 	print('az:', az.min(), '~', az.max())
 	scatter_size, scatter_color = mass_distribute(mass)
 	gr_axis = np.linspace(7.5, 22, 200)
+
+	# load steps for c interval
+	import glob
+	modelFiles = glob.glob('oneCompExc/steps_errD_*pc_*mass.npy')
+	steps = [np.load(f)[-250:] for f in modelFiles]
+	#steps = ['oneCompExc/steps_errD.npy'] + list(glob.glob('oneCompExc/steps_errD_*pc.npy'))
+	#steps = list(map(np.load, steps))
+	#print(list(map(np.shape, steps)))
+	steps = np.vstack(steps)
+	print(steps.shape)
+
 
 	fig, ax = plt.subplots(nrows=3, ncols=5, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.5))
 	plt.subplots_adjust(left=0.06, right=0.98, wspace=0, hspace=0)
@@ -50,6 +66,7 @@ if __name__ == '__main__':
 	theta_sep = rad_sep
 	sep = -1
 	for i in range(len(theta_sep)-2):
+		print('Panel %i' % (i+1))
 		### skip 11 ~ -11
 		if i == 13: sep += 2
 		else: sep += 1
@@ -104,6 +121,21 @@ if __name__ == '__main__':
 		ax[i].plot(gr_axis, zw1, **rad_kws_co1)
 		ax[i].plot(gr_axis, zw2, **rad_kws_co2)
 
+		if (not ceph) & (not ob):
+			x = np.broadcast_arrays(gr_axis, theta)
+			zmodels = []
+			for s in steps[:]:
+				zmodels.append(np.array([gr_axis, function_warp(x, p=[0, *s])]).T)
+			lc = LineCollection(zmodels, color='peachpuff', alpha=0.2, lw=1)
+			lc.set_rasterized(True)
+			ax[i].add_collection(lc)
+			#cinterval = np.percentile(zmodels, [16, 84], axis=0)
+			#ax[i].fill_between(gr_axis, *cinterval, color=colorCO1, edgecolor='none', alpha=0.3, zorder=0)
+			#cinterval = np.percentile(zmodels, [2.5, 97.5], axis=0)
+			#ax[i].fill_between(gr_axis, *cinterval, color=colorCO1, edgecolor='none', alpha=0.2, zorder=0)
+			#for m in zmodels:
+			#	ax[i].plot(gr_axis, m, color=colorCO1, alpha=0.01, zorder=0.01, lw=1)
+
 		### plot text
 		text = r'$\mathbf{\phi_{%i}}$=[%s$^{\circ}$, %s$^{\circ}$]' % (i+1, theta1, theta2)
 		ax[i].text(0.02, 0.98, text, transform=ax[i].transAxes, **rad_kws_text)
@@ -115,9 +147,9 @@ if __name__ == '__main__':
 
 		if i == 10:
 			### arm labels
-			ax[i].plot([9.6, 12.6, 17.1], [-0.4, 0.0, 0.2], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
-			for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, 0.0, 0.2], ['     Perseus', '   Outer', 'OSC']):
-				ax[i].text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
+			#ax[i].plot([9.6, 12.6, 17.1], [-0.4, 0.0, 0.2], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
+			#for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, 0.0, 0.2], ['     Perseus', '   Outer', 'OSC']):
+			#	ax[i].text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
 			ax[i].set_xlabel('R (kpc)')
 			ax[i].set_ylabel('Z (kpc)')
 		if i>=10:
@@ -129,8 +161,8 @@ if __name__ == '__main__':
 		ax[i].set_xlim([8 if ceph or ob else 8, 18.5])#21.5])
 		ax[i].set_ylim([-0.8, 1.4])
 
-	#if not ob:
-	#	ax[0].text(-0.22, 0.9, 'c', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#if not ceph:
+	#	ax[0].text(-0.32, 0.9, 'c', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
 
 	if ceph: bn = 'fig/r_z_MC_Ceph%s' % suffix

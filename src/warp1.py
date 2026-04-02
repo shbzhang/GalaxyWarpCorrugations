@@ -1,5 +1,6 @@
 ### plot Az-Z of MCs at different Rgal
 
+import glob, os
 import numpy as np
 import pylab as pl
 import scipy.interpolate as sp_interp
@@ -8,6 +9,7 @@ import scipy.optimize as sp_opt
 from shared import *
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 suffix = ''#'_xf'
 ceph = 0
@@ -18,6 +20,7 @@ if __name__ == '__main__':
 	figwidth = textwidth*figscale
 	az_min, az_max = -40 if ob else -30, 166
 
+	'''
 	out_data = np.loadtxt('out_para%s.txt' % suffix,comments='#')
 	osc_data = np.loadtxt('osc2_para%s.txt' % suffix,comments='#')
 	per_data = np.loadtxt('per_para%s.txt' % suffix,comments='#')
@@ -36,10 +39,19 @@ if __name__ == '__main__':
 	vv = data[2]
 	mass = data[7]
 	com = data[8]
+	'''
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data()
+
 	#all_mass = np.hstack((osc_data[:,7]*1,out_data[:,7]*1.,per_data[:,7]))    #####################################pl mass use different scale
 	scatter_size, scatter_color = mass_distribute(mass)
 
 	theta_axis = np.linspace(-90,180,200)
+
+	# load steps for c interval
+	modelFiles = glob.glob('oneCompExc/steps_errD_*pc_*mass.npy')
+	steps = [np.load(f)[-50:] for f in modelFiles]
+	steps = np.vstack(steps)
+	print(steps.shape)
 
 	#fig, ax = plt.subplots(nrows=2, ncols=5, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.5))
 	fig, ax = plt.subplots(nrows=3, ncols=3, sharex=True, sharey=True, figsize=(figwidth, figwidth*0.85))
@@ -50,6 +62,7 @@ if __name__ == '__main__':
 	#gr_sep = [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 18.5, 20.5]
 	gr_sep = [8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 17.5, 20.5]
 	for i in range(len(gr_sep)-1):
+		print('Panel %i' % (i+1))
 		gr1, gr2 = gr_sep[i:i+2]
 		gr = (gr1 + gr2) / 2
 		radius = 2*np.pi*gr*(np.abs(az_min-az_max)/360.)
@@ -62,7 +75,7 @@ if __name__ == '__main__':
 
 		### plot binned average
 		azcen, azrms, zcen, zrms = bin_data(az[idx], zz[idx], mass[idx], grid=np.arange(160, -50, -6), width=12, method='gauss')
-		#azcen, azrms, zcen, zrms, vcen, vrms, rcen, rrms = cal_zcen_zrms(az[idx], zz[idx], vv[idx], rr[idx], weights=mass[idx], binsize = 6, binstep = 3)
+		#azcen, azrms, zcen, zrms = bin_data(az[idx], zz[idx], weight[idx], grid=np.arange(160, -50, -6), width=12, method='gauss')
 
 		# i think there is no need to fill gap with interpolating, just plot the binned average
 		'''
@@ -89,7 +102,7 @@ if __name__ == '__main__':
 
 			subC = cepheid[(cepheid['r'] >= gr1) & (cepheid['r'] < gr2)]
 			ax[i].scatter(subC['az'], subC['z'], s=15, facecolor='orangered', edgecolor='none', alpha=0.6, zorder=200)
-			azcen, azrms, zcen, zrms = bin_data(subC['az'], subC['z'], np.ones(len(subC)), grid=np.arange(160, -50, -3), width=6, method='gauss', minbin=5)
+			azcen, azrms, zcen, zrms = bin_data(subC['az'], subC['z'], np.ones(len(subC)), grid=np.arange(160, -50, -6), width=12, method='gauss', minbin=5)
 			ax[i].plot(azcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
 			'''
 			subY = ygiant[(ygiant['r'] >= gr1) & (ygiant['r'] < gr2) & (np.abs(ygiant['z'])<1)]
@@ -121,6 +134,22 @@ if __name__ == '__main__':
 		zw1, zw2=cal_warp_MWSIP(gr, theta_axis)
 		ax[i].plot(theta_axis, zw1, **ring_kws_co1)
 		ax[i].plot(theta_axis, zw2, **ring_kws_co2)
+
+		#C interval
+		if (not ceph) & (not ob):
+			x = np.broadcast_arrays(gr, theta_axis)
+			zmodels = []
+			for s in steps:
+				zmodels.append(np.array([theta_axis, function_warp(x, p=[0, *s])]).T)
+			#cinterval = np.percentile(zmodels, [16, 84], axis=0)
+			#ax[i].fill_between(theta_axis, *cinterval, color=colorCO1, edgecolor='none', alpha=0.3, zorder=0)
+			#cinterval = np.percentile(zmodels, [2.5, 97.5], axis=0)
+			#ax[i].fill_between(theta_axis, *cinterval, color=colorCO1, edgecolor='none', alpha=0.2, zorder=0)
+			#cinterval = np.percentile(zmodels, [0, 100], axis=0)
+			#ax[i].fill_between(theta_axis, *cinterval, color=colorCO1, edgecolor='none', alpha=0.2, zorder=0)
+			lc = LineCollection(zmodels, color='peachpuff', alpha=0.2, lw=1)
+			lc.set_rasterized(True)
+			ax[i].add_collection(lc)
 
 		### plot gr text
 		text = '%i' % gr if gr%1==0 else '%.1f' % gr
@@ -164,7 +193,7 @@ if __name__ == '__main__':
 
 	### panel ID
 	#if not ceph:
-		#ax[0].text(-0.30, 0.94, 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#	ax[0].text(-0.30, 0.93, 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
 
 	if ceph: bn = 'fig/az_z_MC_Ceph%s' % suffix

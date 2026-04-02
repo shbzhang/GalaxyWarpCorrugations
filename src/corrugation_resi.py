@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 
 suffix = ''#'_xf'
-comp = 2
+comp = 1
 ceph = 0
 ob = 0
 
@@ -19,6 +19,7 @@ if __name__ == '__main__':
 	figscale = 0.85
 	figwidth = textwidth*figscale
 
+	'''
 	out_data = np.loadtxt('out_para%s.txt' % suffix,comments='#')
 	osc_data = np.loadtxt('osc2_para%s.txt' % suffix,comments='#')
 	per_data = np.loadtxt('per_para%s.txt' % suffix,comments='#')
@@ -38,6 +39,9 @@ if __name__ == '__main__':
 	mass = data[7]
 	#mass = (np.vstack((osc_data*3, out_data*1.5, per_data)).T)[7]
 	com = data[8]
+	'''
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data()
+	zz -= function_warp((rr, az), p=p_1comp if comp==1 else p_2comp)
 
 	starZZ = starZ - function_warp((starR, starAz), p=p_1comp if comp==1 else p_2comp)
 
@@ -72,6 +76,7 @@ if __name__ == '__main__':
 
 		### plot binned average and errorbar
 		rcen, rrms, zcen, zrms = bin_data(rr[idx], zz[idx], mass[idx], grid=np.arange(8.15 if i<5 else 8, 30, 1), width=1, method='gauss')
+		#rcen, rrms, zcen, zrms = bin_data(rr[idx], zz[idx], weight[idx], grid=np.arange(8.15 if i<5 else 8, 30, 1), width=1, method='gauss')
 		#rcen, rrms, zcen, zrms = cal_zcen_zrms(rr[idx], zz[idx], weights=mass[idx], binsize=-1, bin0=8.15 if i<5 else 8)
 		ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., **rad_kws_err)
 		#ax[i].plot(rcen, zcen, '-', color=darker_hex(col_mc), lw=2, alpha=0.8, zorder=10)
@@ -128,9 +133,9 @@ if __name__ == '__main__':
 
 		if i == 10:
 			### arm labels
-			ax[i].plot([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
-			for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], ['      Perseus', '    Outer', '  OSC']):
-				ax[i].text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
+			#ax[i].plot([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
+			#for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], ['      Perseus', '    Outer', '  OSC']):
+			#	ax[i].text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
 			### label
 			ax[i].set_xlabel('R (kpc)')
 			ax[i].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
@@ -143,7 +148,7 @@ if __name__ == '__main__':
 		ax[i].set_xlim(8, 19)
 		ax[i].set_ylim(-0.8, 0.8)
 
-	#ax[0].text(-0.25, 0.9, 'a' if comp==1 else 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	ax[0].text(-0.30, 0.94, 'a' if comp==1 else 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
 	if ceph: bn = 'fig/r_dz_MC_Ceph_%icomp%s' % (comp, suffix)
 	elif ob: bn = 'fig/r_dz_MC_OB_%icomp%s' % (comp, suffix)

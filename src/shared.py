@@ -4,10 +4,13 @@ import numpy as np
 import matplotlib as mpl
 import pandas as pd
 ### Warp Params
-p_1comp = [0,  0.09362826, 8.56849936, 1.05015227, -0.7049789 ]##1st exclude 160-200
-#[-0.0717748888594908, 0.1074529579441738, 7.8409214840721795, 0.9370789056657302, -8.059413168263955]   
-p_2comp = [0, 1.19228266e-01, 9.01450681e+00, -3.53824563e+00, -1.24059941e-02, 1.27147257e+01, 2.03108539e+00, -2.04459975e+01]##2nd exclude 160-200
+#p_1comp = [0,  0.09362826, 8.56849936, 1.05015227, -0.7049789 ]##1st exclude 160-200, #1 revision
+p_1comp = [0,  0.11025648, 8.6446515, 0.97143317, -1.39623657] # 2 revision
+
+
+#p_2comp = [0, 1.19228266e-01, 9.01450681e+00, -3.53824563e+00, -1.24059941e-02, 1.27147257e+01, 2.03108539e+00, -2.04459975e+01] # 2nd exclude 160-200, #1 revision
 #[0, 1.19210237e-01, 9.01434283e+00, -3.53962133e+00, -1.24379884e-02, 1.27166892e+01, 2.03007431e+00, -2.04479290e+01]## not properly burn-in
+p_2comp = [0,  0.13201435, 9.13772156, -5.21004583, -0.01892544, 12.20359468, 1.83408649, -18.6826663] # 2 revision
 
 # sin with damp period
 p_sin1comp = [0.20052978, 7.83808911, 2.76825318, 0.17047776, 0.01625255]	# 1comp+sin
@@ -17,12 +20,31 @@ p_sin2comp = [0.19866392, 7.95872642, 2.61382166, 0.20077682, 0.02240027] # 2com
 #[0.19869108, 7.958983, 2.61323087, 0.20085326, 0.02240435] # use not properly burn-in 2comp result
 
 #radcliffe wave + free phi width
-p_rad1comp = ([0.2000, 11.3651, 3.8522, 4.7776, 0.0968, 31.7963, 9.6802], 
-	[-0.1466, 14.2452, 4.5423, -17.1834], [-0.0997, 10.7216, 4.2233, 61.9456], [-0.1033, 10.0907, 3.5992, 106.0447], [0.2852, 11.9379, 7.9774, 141.9115])
-p_rad2comp = ([0.1798, 11.3697, 6.8567, 4.5007, 0.0800, 31.6410, 9.2270],
-	[-0.1359, 14.1529, 4.3494,- 16.3676], [-0.1291, 10.7583, 4.4029, 61.6866], [-0.1204, 10.1934, 3.5576, 106.0012], [0.2537, 11.9445, 7.6762, 143.0137])
-p_circ1comp = [0.1673, 22.3272, 52.3849, 12.7471, 0.8703]
-p_circ2comp = [0.1618, 21.6950, 52.8728, 12.6713, 0.8555]
+#p_rad1comp = ([0.2000, 11.3651, 3.8522, 4.7776, 0.0968, 31.7963, 9.6802], 
+#	[-0.1466, 14.2452, 4.5423, -17.1834], [-0.0997, 10.7216, 4.2233, 61.9456], [-0.1033, 10.0907, 3.5992, 106.0447], [0.2852, 11.9379, 7.9774, 141.9115])
+p_rad1comp = (\
+	[0.1642051497224096, 11.414854787892217, 4.128583627294581, 5.225774753530958, 0.09565408147605053, 31.930404841538362, 9.517598869442107],\
+	[-0.0752974320964544, 14.738579782282665, 6.270996498318865, -18.0477289625138],\
+	[-0.0751491985230566, 10.638797575560321, 4.162115683827265, 61.598374168264655],\
+	[-0.08233119781797832, 10.074165882338802, 3.8639715704036672, 104.8403903270003],\
+	[0.0990740265830077, 12.023991841711359, 7.883899877704808, 144.88903338908486]\
+	)
+
+#p_rad2comp = ([0.1798, 11.3697, 6.8567, 4.5007, 0.0800, 31.6410, 9.2270],
+#	[-0.1359, 14.1529, 4.3494,- 16.3676], [-0.1291, 10.7583, 4.4029, 61.6866], [-0.1204, 10.1934, 3.5576, 106.0012], [0.2537, 11.9445, 7.6762, 143.0137])
+p_rad2comp = (\
+	[0.13820738517301873, 11.347985842308768, 6.340582229618389, 4.4619858178452745, 0.06782841802800504, 31.94008898314093, 8.47732501926159],\
+	[-0.07366799068508818, 14.280756002073709, 4.292107182706715, -18.104910091680452],\
+	[-0.1122249790458754, 10.736459606294025, 4.4298851050408015, 61.092745362061486],\
+	[-0.1065529170374176, 10.276317477103312, 3.802771325549306, 103.99392236131952],\
+	[0.08087599862431931, 12.016131284829374, 8.057626049588588, 147.03947811305233]
+	)
+#p_circ1comp = [0.1673, 22.3272, 52.3849, 12.7471, 0.8703]
+p_circ1comp = [0.12022708146730038, 21.403601891560587, 52.5683095317009, 12.70490222708815, 0.9438855120388356]
+#[0.1180277698730274, 21.494414320521308, 52.33155122498118, 12.712047956550592, 0.93938384269732]
+#p_circ2comp = [0.1618, 21.6950, 52.8728, 12.6713, 0.8555]
+p_circ2comp = [0.11817596030526281, 20.49938444782939, 53.29284840274242, 12.550864375494976, 0.8821148522344949]
+#[0.11392508987721547, 20.456378814518096, 53.03621039757925, 12.547505887478895, 0.8765020569282277]
 
 ### Arm Params
 best_per=[30.03, 10.062122711773025, 9.839300621559302]  #mass  
@@ -97,7 +119,7 @@ arm_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zord
 arm_kws_text = dict(color=colorText, ha='left', va='top', fontsize=20, fontweight='bold')
 
 textwidth=18 #inches, width of text in latex
-subfigureIndexFont = dict(family="Arial Black", size=24)
+subfigureIndexFont = dict(family="Arial Black", size=28)
 mpl.rcParams['savefig.format'] = 'pdf'
 mpl.rcParams['savefig.dpi'] = 280
 mpl.rcParams['axes.linewidth'] = 0.8
@@ -153,7 +175,6 @@ def function_warp(x, p=p_1comp, rad=None, circ=None):
 	#elif isinstance(PHI, (int, float)):
 	#	PHI = np.ones(R.shape) * PHI
 	z = np.ones(R.shape) * a0
-
 	if len(p)<=5: #1 comp
 		a1, Rw1, bw1, PHIw1 = p[1:]
 		idx = R>Rw1
@@ -170,6 +191,7 @@ def function_warp(x, p=p_1comp, rad=None, circ=None):
 		Amp, Rrad, sigmarad, Period, Amp0, PHIcirc, sigmacirc = rad[0]
 		d = R-Rrad
 		z += np.exp(-d**2/2/sigmarad**2) * (Amp * np.sin(2 * np.pi * d / Period) + Amp0) * np.exp(-(PHI-PHIcirc)**2/ 2 / sigmacirc**2)
+
 		for i in [1,2,3]:
 			Amp, Rrad, Period, PHIcirc = rad[i]
 			d = R-Rrad
@@ -177,7 +199,7 @@ def function_warp(x, p=p_1comp, rad=None, circ=None):
 		Amp, Rrad, Period, PHIcirc = rad[4]
 		d = R-Rrad
 		z += np.exp(-d**2/2/2**2) * (Amp * np.sin(2 * np.pi * d / Period)) * np.exp(-(PHI-PHIcirc)**2/ 2 / 9.5**2)
-
+		
 
 	if circ is not None:
 		Amp, PHIcirc, Period, Rrad, sigmarad = circ
@@ -211,6 +233,7 @@ def mass_distribute(mass):
 	normSize[idx] = 200
 	normColor[idx] = 'cyan'
 
+	normSize = np.clip(np.sqrt(mass) / 3, 5, 120)
 	return normSize, normColor
 
 
@@ -288,7 +311,7 @@ def cal_warp_Ceph(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
 	return zw1, zw2
 
 
-def cal_warp_MWSIP(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200)):
+def cal_warp_MWSIP(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200), p=p_1comp):
 	### calculate z at certain R and PHI in kpc
 	R, PHI = np.broadcast_arrays(R, PHI)
 	zw1=function_warp((R, PHI), p_1comp) ##mwisp first component
@@ -315,6 +338,60 @@ def weighted_avg_and_std(values, weights):
 	# Fast and numerically precise:
 	variance = np.average((values-average)**2, weights=weights)
 	return (average, np.sqrt(variance))
+
+
+def load_data(arm='all', excluded=True):
+	data = []
+	if (arm=='all') | (arm=='out'):
+		out_data = np.loadtxt('out_para.txt', comments='#')
+		data.append(out_data)
+	if (arm=='all') | (arm=='osc'):
+		osc_data = np.loadtxt('osc2_para.txt', comments='#')
+		data.append(osc_data)
+	if (arm=='all') | (arm=='per'):
+		per_data = np.loadtxt('per_para.txt', comments='#')
+		data.append(per_data)
+
+	data = np.vstack(data).T#(osc_data, out_data, per_data)).T
+
+	l, b, v, _, d, \
+	ed, sz, mass, complete, sd, \
+	vir, rgal, x, y, z, \
+	index, l_rms, b_rms, v_rms, az, \
+	T_int, area, tpeak, tex, nh2, \
+	pint, fill, lp, bp, vp = data
+
+	if excluded:
+		### exclude distant but massive clouds within 195~200
+		idx = (mass > 0) & ~((l>195) & (l<199) & (x**2+y**2>16**2))# & (xx**2+yy**2<16**2)# & (mass>1e4))
+	else:
+		idx = (mass > 0)
+	data = data[:,idx]
+
+	l, b, v, lwidth, distance, \
+	err_dist, size_pc, mass, complete, surface_density, \
+	viral_para, r, x, y, z,\
+	index, l_rms, b_rms, v_rms, az, \
+	T_int, area, tpeak, tex, nh2, \
+	pint, fill, lp, bp, vp = data
+
+	cosl = np.cos(np.deg2rad(l))
+	cosb = np.cos(np.deg2rad(b))
+	sinb = np.sin(np.deg2rad(b))
+	err2_Z = (err_dist * sinb)**2
+	err2_Z[err2_Z < 1e-12] = 1e-12 #avoid dZ=0
+	#err2_R = (err_dist * np.abs((distance * cosb**2 - Rsun * cosl * cosb) / r))**2
+
+	# normalize mass
+	norm_mass = np.sqrt(mass)
+	norm_mass = norm_mass/np.mean(norm_mass)
+
+	# weight
+	H = 150 # kpc
+	weight = norm_mass / (err2_Z + H**2)
+
+	return r, az, x, y, z, l, b, mass, distance, err_dist, weight
+
 
 
 def bin_data(x, y, w, grid=None, width=1, method='median', minbin=10):

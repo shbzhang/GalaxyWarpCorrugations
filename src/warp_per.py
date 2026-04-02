@@ -8,19 +8,17 @@ from scipy.stats import norm
 import scipy.optimize as sp_opt
 from shared import *
 
-if __name__ == '__main__':
-	figscale = 0.45
-	figwidth = textwidth*figscale
-	#col_mc = '#4169e1'#'#6fa01f'
+def plot(ax=None, figscale=0.45):
+	#Figure
+	if ax is None:
+		figwidth = textwidth*figscale
+		fig, ax = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(figwidth, figwidth*0.95))
+		plt.subplots_adjust(left=0.13, right=0.98, wspace=0.1, hspace=0.06)
+	else:
+		fig = ax[0].figure
 
-	data = np.loadtxt('per_para.txt',comments='#')
-	ll = data[:,0]
-	bb = data[:,1]
-	vv = data[:,2]
-	rr = data[:,11]
-	zz = data[:,14]
-	az = data[:,19]
-	mass = data[:,7]/data[:,8]
+	#Prepare Data
+	rr, az, xx, yy, zz, ll, bb, mass, distance, err_dist, weight = load_data(arm='per')
 
 	### calculate arm
 	azmin = az.min()-3
@@ -29,10 +27,6 @@ if __name__ == '__main__':
 	R = function_arm(PHI, best_per)
 	print('Az range:', az.min(), az.max())
 	print('Az plot range:', azmin, azmax)
-
-	fig, ax = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(figwidth, figwidth*0.95))
-	plt.subplots_adjust(left=0.13, right=0.98, wspace=0.1, hspace=0.06)
-	plt.rcParams['xtick.direction'] = 'in'
 
 	### plot cloud
 	scatter_size,scatter_color = mass_distribute(mass)
@@ -68,7 +62,7 @@ if __name__ == '__main__':
 	ax[0].set_yticks(np.arange(-3, 3, 0.2))
 	ax[0].set_xlim(azmin, azmax+20)
 	ax[0].set_ylim(-0.4, 0.6)
-	ax[0].set_ylabel('Z (kpc)')
+	ax[0].set_ylabel('Z (kpc)', labelpad=-5)
 
 	# upper tick
 	import scipy.interpolate as sp_interp
@@ -112,12 +106,13 @@ if __name__ == '__main__':
 	ax[1].plot([PHI[0], PHI[-1]], [0, 0], **arm_kws_co1)
 
 	ax[1].set_yticks(np.arange(-3, 3, 0.2))
+	ax[1].set_xlim(azmin, azmax+20)
 	ax[1].set_ylim([-0.4,0.4])
 	#ax[1].yticks([-500,0,500,1000,1500],['-500','0','500','1000','1500'],fontsize=14,fontweight=1.8)
 	#ax[1].xticks([-25,0,25,50,75,100,125,150],['-25','0','25','50','75','100','125','150'],fontsize=14,fontweight=1.8)
 	ax[1].grid(True, ls='--', alpha=0.4)
 	ax[1].set_xlabel('Galactocentric Azimuth (deg)')
-	ax[1].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
+	ax[1].set_ylabel('$\mathbf{\Delta}$Z (kpc)', labelpad=-5)
 
 	insert_arm_plot(ax[0], [0.74, 0.15, 0.36, 0.36], boldArm='per', boldRange=[azmin,azmax])
 
@@ -158,7 +153,30 @@ if __name__ == '__main__':
 		#powerAxes.yaxis.set_visible(False)
 		powerAxes.patch.set_alpha(0.0)
 
+	return fig, ax
 
-	plt.savefig('fig/per_warp_corrugation.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
-	plt.savefig('fig/per_warp_corrugation.png', bbox_inches='tight')
-	plt.show()
+
+if __name__ == '__main__':
+	if 0:
+		fig, ax = plot()
+
+		plt.savefig('fig/per_warp_corrugation.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
+		plt.savefig('fig/per_warp_corrugation.png', bbox_inches='tight')
+		plt.show()
+	else:
+		#plot per/osc together
+		figscale = 0.45
+		figwidth = textwidth*figscale
+		fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(figwidth*2, figwidth*0.95))
+		plt.subplots_adjust(left=0.13/2, right=1-(1-0.98)/2, wspace=0.22, hspace=0.08)
+
+		plot(ax = ax[:,0])
+		ax[0,0].tick_params(axis='x', labelbottom=False)
+
+		from warp_osc import plot as plot2
+		plot2(ax = ax[:,1])
+		ax[0,1].tick_params(axis='x', labelbottom=False)
+
+		plt.savefig('fig/perosc_warp_corrugation.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
+		plt.savefig('fig/perosc_warp_corrugation.png', bbox_inches='tight')
+		plt.show()

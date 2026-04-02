@@ -192,7 +192,7 @@ plotter.add_mesh(warpCut, scalars='RGBA', rgba=True)
 X, Y, Z, R, Phi = createPlane(r = np.linspace(4, 18, 100), phi = np.linspace(34.5, 34.5+30, 100))
 sinCut = pv.StructuredGrid(X, Y, Z+0.05)
 ### half transparent
-alpha = np.exp(-(R*(Phi-34.5))**2/80**2) * (sigmoid(R, 8, 0.5) - sigmoid(R, 16, 0.5))
+alpha = np.exp(-(R*(Phi-34.5))**2/80**2) * (sigmoid(R, 7, 0.5) - sigmoid(R, 16, 0.5))
 color = np.zeros((X.size, 4), dtype=np.uint8)
 color[:, 0:3] = [120,240,200] if c else [176,196,222] # [160, 200, 250]
 color[:, 3] = alpha.T.ravel() * 140#120
@@ -263,11 +263,11 @@ plotter.show_bounds(bounds=[-30, 30, -30, 30, -5, 5], grid=True, bold=True, \
 	zlabel='Z - model (kpc)')
 '''
 if html:
-	#plotter.show()
-	plotter.export_html("fig/schematic.html")
-	#plotter.screenshot('fig/schematic.png')
+	plotter.show()
+	#plotter.export_html("fig/schematic.html")
+	plotter.screenshot('fig/schematic.png')
 else:
 	plotter.show()
-	#plotter.save_graphic('fig/schematic.eps')
-	plotter.screenshot('fig/schematic.png')
+	plotter.save_graphic('fig/schematic.eps')
+	#plotter.screenshot('fig/schematic.png')
 
