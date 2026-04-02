@@ -233,7 +233,7 @@ def mass_distribute(mass):
 	normSize[idx] = 200
 	normColor[idx] = 'cyan'
 
-	normSize = np.clip(np.sqrt(mass) / 3, 5, 120)
+	#normSize = np.clip(np.sqrt(mass) / 3, 5, 120)
 	return normSize, normColor
 
 
