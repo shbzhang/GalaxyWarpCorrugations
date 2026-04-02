@@ -32,14 +32,14 @@ Below are preview of 3D interactive figures.
 Click the image to open the interactive version.
 
 ### 📌 Figure 1a: m = 1 CO warp model.
-created by `src/mcmcFittingFunction0129.py` with `component=1` and `sin=False`
+created by `src/mcmcFittingFunctionErr.py` with `component=1` and `sin=False`
 
 [![Figure 1a](median_model_1comp.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/median_model_1comp.html)
 
 ---
 
 ### 📌 Extended Data Figure 1: m = 1, 2 CO warp model.
-created by `src/mcmcFittingFunction0129.py` with `component=2` and `sin=False`
+created by `src/mcmcFittingFunctionErr.py` with `component=2` and `sin=False`
 
 [![ED Figure 1](median_model_2comp.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/median_model_2comp.html)
 
