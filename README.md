@@ -19,7 +19,8 @@ The catalog of clouds used in the paper is available at [Science Data Bank](http
 
 After downloading the catalog, modify `src/mcmcFittingFunction0129.py` with your settings. 
   - Modify `component` to switch between `m=1` and `m=1, 2` model.
-  - Modify `sin` to switch between warp fitting and corrugation fitting.
+  - Switch `warp` to fit warp models or corrugation models.
+  - Switch `radwave` to fit radial or azimuthal corrugation models.
   - Modify `params` to switch a parameter between free and fixed.
 
 Run a McMC fitting process with:
@@ -31,22 +32,25 @@ python src/mcmcFittingFunction0129.py
 Below are preview of 3D interactive figures.
 Click the image to open the interactive version.
 
-### 📌 Figure 1a: m = 1 CO warp model.
-created by `src/mcmcFittingFunctionErr.py` with `component=1` and `sin=False`
+### 📌 Supplementary Figure 1: m = 1 CO warp model.
+The interactive counterpart to Figure 1a.
+Created by `src/mcmcFittingFunctionErr.py` with `component=1` and `warp=True`.
 
-[![Figure 1a](median_model_1comp.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/median_model_1comp.html)
-
----
-
-### 📌 Extended Data Figure 1: m = 1, 2 CO warp model.
-created by `src/mcmcFittingFunctionErr.py` with `component=2` and `sin=False`
-
-[![ED Figure 1](median_model_2comp.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/median_model_2comp.html)
+[![Supplementary Figure 1](Supp_Fig1.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/Supp_Fig1.html)
 
 ---
 
-### 📌 Figure 4: A schematic three-dimensional view of the Milky Way.
-created by `src/schematic.py`
+### 📌 Supplementary Figure 2: m = 1, 2 CO warp model.
+The interactive counterpart to Extended Data Figure 1.
+Created by `src/mcmcFittingFunctionErr.py` with `component=2` and `warp=True`.
 
-[![Figure 4](schematic.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/schematic.html)
+[![Supplementary Figure 2](Supp_Fig2.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/Supp_Fig2.html)
+
+---
+
+### 📌 Supplementary Figure 3: A schematic three-dimensional view of the Milky Way.
+The interactive counterpart to Figure 4.
+Created by `src/schematic.py`.
+
+[![Supplementary Figure 3](Supp_Fig3.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/Supp_Fig3.html)
 
