@@ -164,8 +164,8 @@ if __name__ == '__main__':
 	ax[0].set_ylim(-5.25, 5.25)
 	ax[0].set_xlim(l1.max(), l1.min())
 	ax[0].legend(loc = (0.54, 0.02), frameon=False, borderpad=0.2, labelspacing=0.1)
-	ax[0].set_ylabel('  (deg)')
-	ax[0].text(-0.125, 0.35, 'b', va='center', ha='center', fontsize=20, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[0].transAxes, rotation=90)
+	ax[0].set_ylabel('  (deg)', labelpad=3)
+	ax[0].text(-0.107, 0.36, 'b', va='center', ha='center', fontsize=20, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[0].transAxes, rotation=90)
 
 
 	# upper tick
@@ -213,15 +213,15 @@ if __name__ == '__main__':
 
 	### plot H line
 	arm_kws_co1['zorder']=0
-	ax[1].plot([l1[0], l1[-1]], [0, 0], **arm_kws_co1)
+	#ax[1].plot([l1[0], l1[-1]], [0, 0], **arm_kws_co1)
 
 	#ax[1].set_xlabel('Galactic Longitude (deg)', fontsize=15, fontweight='bold')#, fontfamily='Georgia', fontstyle='italic')
 	#ax[1].set_ylabel('Galactic Latitude (deg)     ', fontsize=15, fontweight='bold')
 	ax[1].set_xlabel('  (deg)')
-	ax[1].text(0.43, -0.17, 'l', va='center', ha='center', fontsize=20, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[1].transAxes)
+	ax[1].text(0.44, -0.165, 'l', va='center', ha='center', fontsize=20, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[1].transAxes)
 
-	ax[1].set_ylabel('$\mathbf{\Delta}$   (deg)')
-	ax[1].text(-0.125, 0.40, 'b', va='center', ha='center', fontsize=20, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[1].transAxes, rotation=90)
+	ax[1].set_ylabel('$\mathbf{\Delta}$   (deg)', labelpad=3)
+	ax[1].text(-0.107, 0.415, 'b', va='center', ha='center', fontsize=20, fontweight='bold', fontfamily='Georgia', fontstyle='italic', transform=ax[1].transAxes, rotation=90)
 
 	ax[1].set_ylim([-5.25, 5.25])
 	ax[1].grid(True, ls='--', alpha=0.4)
@@ -267,8 +267,8 @@ if __name__ == '__main__':
 		powerAxes.patch.set_alpha(0.0)
 
 
-	ax[0].text(-0.15, 1.0, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
-	ax[1].text(-0.15, 1.0, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
+	ax[0].text(-0.125, 1.0, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	ax[1].text(-0.125, 1.0, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[1].transAxes)
 
 	plt.savefig('fig/out_warp_corrugation_b.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
 	plt.savefig('fig/out_warp_corrugation_b.png', bbox_inches='tight')

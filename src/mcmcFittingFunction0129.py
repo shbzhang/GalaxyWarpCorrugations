@@ -14,7 +14,7 @@ from shared import textwidth, gc2g, g2gc
 #np.random.seed(42)
 
 #comp1/comp2 * dR * sin
-component = 1
+component = 2
 sn = range(0,600)#None#
 excluded = True # whether to exclude clouds near 180deg
 sin = False 	# set to False to fit WARP, plot WARP corner, and plot warp 3D model
@@ -744,7 +744,7 @@ if __name__ == '__main__':
 	'''
 
 	### AIC / BIC
-	if 0:
+	if 1:
 		# Number of data points and free parameters
 		n = len(data[0])  # number of data points
 		k = len(best)     # number of free parameters

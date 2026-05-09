@@ -113,17 +113,20 @@ if __name__ == '__main__':
 				zmodels = []
 				for s in steps:
 					zmodels.append(np.array([raxis, function_warp((raxis, phiaxis), p=[0,0,0,0,0], rad=[s,*p_rad1comp[1:]])]).T)
-				lc = LineCollection(zmodels, color='peachpuff', alpha=0.1, lw=1, zorder=10)
+				lc = LineCollection(zmodels, color='peachpuff', alpha=0.1, lw=1, zorder=0)
 				lc.set_rasterized(True)
 				ax.add_collection(lc)
 
 		### plot h line
+		'''
 		if comp==1:
 			rad_kws_co1['zorder']=0
 			ax.plot([0, 30], [0, 0], **rad_kws_co1)
 		else:
 			rad_kws_co2['zorder']=0
 			ax.plot([0, 30], [0, 0], **rad_kws_co2)
+		'''
+		ax.plot([0, 30], [0, 0], color='grey', alpha=0.6, lw=1, zorder=0, linestyle='-')
 
 		### plot text
 		text = r'$\mathbf{\phi_{%i}}$' % (i+1)#=[%s$^{\circ}$, %s$^{\circ}$]' % (i+1, theta1, theta2)
@@ -146,7 +149,7 @@ if __name__ == '__main__':
 			#	ax.text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
 			### label
 			ax.set_xlabel('R (kpc)')
-			ax.set_ylabel('$\mathbf{\Delta}$Z (kpc)', labelpad=-10)
+			ax.set_ylabel('$\mathbf{\Delta}$Z (kpc)', labelpad=-5)
 		#if i>=10:
 		#	xtk = ax.get_xticks().astype(str)
 		#	xtk[2] = '  '+xtk[2]	#shift '8' a little right

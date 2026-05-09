@@ -12,11 +12,11 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 suffix = ''#'_xf'
-ceph = 0
+ceph = 1
 ob = 0
 
 if __name__ == '__main__':
-	figscale = 0.85 if ceph else 0.5
+	figscale = 0.9 if ceph else 0.5
 	figwidth = textwidth*figscale
 	az_min, az_max = -40 if ob else -30, 166
 
@@ -101,16 +101,17 @@ if __name__ == '__main__':
 			ax[i].plot(azcen, zcen, '-', label='MWISP clouds', **ring_kws_bin)
 
 			subC = cepheid[(cepheid['r'] >= gr1) & (cepheid['r'] < gr2)]
-			ax[i].scatter(subC['az'], subC['z'], s=15, facecolor='orangered', edgecolor='none', alpha=0.6, zorder=200)
+			ax[i].scatter(subC['az'], subC['z'], s=15, facecolor='#aa44cc', edgecolor='none', alpha=0.6, zorder=200)
 			azcen, azrms, zcen, zrms = bin_data(subC['az'], subC['z'], np.ones(len(subC)), grid=np.arange(160, -50, -6), width=12, method='gauss', minbin=5)
-			ax[i].plot(azcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
+			ax[i].plot(azcen, zcen, '.-', color='#770099', zorder=200, label='Cepheids')
+			
 			'''
 			subY = ygiant[(ygiant['r'] >= gr1) & (ygiant['r'] < gr2) & (np.abs(ygiant['z'])<1)]
 			ax[i].scatter(subY['az'], subY['z'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
 			azcen, azrms, zcen, zrms = bin_data(subY['az'], subY['z'], np.ones(len(subY)), grid=np.arange(160, -50, -3), width=6, method='gauss', minbin=50)
 			ax[i].plot(azcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
 			'''
-			if i==len(ax)-1: ax[i].legend(frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=12)
+			if i==len(ax)-1: ax[i].legend(frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=18)
 		elif ob:
 			starIdx = (starR >= gr1) & (starR < gr2)
 			ax[i].scatter(starAz[starIdx], starZ[starIdx], s=1, c='orangered', zorder=200, alpha=0.3)#, **rad_kws_mc)
@@ -168,9 +169,6 @@ if __name__ == '__main__':
 			ax[i].set_xticklabels(['%i' % i for i in np.arange(-50, 200, 50)])
 		else:
 			ax[i].set_xticklabels([])
-		if i == lowerLeftIdx:
-			ax[i].set_xlabel('       Galactocentric Azimuth (deg)')
-			ax[i].set_ylabel('Z (kpc)', labelpad=1)
 
 		#ax[i].set_yticklabels(fontsize=10.5, fontweight=1.8)
 		upper = ax[i].twiny()
@@ -195,6 +193,10 @@ if __name__ == '__main__':
 	#if not ceph:
 	#	ax[0].text(-0.30, 0.93, 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
+	ax11 = fig.add_subplot(111, frameon=False)
+	ax11.tick_params(which='both', labelcolor='none', top=False, bottom=False, left=False, right=False)
+	ax11.set_xlabel('Galactocentric Azimuth (deg)')
+	ax11.set_ylabel('Z (kpc)', labelpad=5)
 
 	if ceph: bn = 'fig/az_z_MC_Ceph%s' % suffix
 	elif ob: bn = 'fig/az_z_MC_OB%s' % suffix

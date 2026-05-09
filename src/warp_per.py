@@ -36,7 +36,7 @@ def plot(ax=None, figscale=0.45):
 	### plot binned average
 	azcen, azrms, zcen, zrms = bin_data(az, zz, mass, grid=np.arange(160, -50, -2), width=4, method='gauss')
 	#azcen, azrms, zcen, zrms, vcen, vrms, rcen, rrms = cal_zcen_zrms(az, zz, vv, rr, weights=mass, binsize=4)
-	ax[0].plot(azcen, zcen, '-', **arm_kws_bin)
+	#ax[0].plot(azcen, zcen, '-', **arm_kws_bin)
 
 	### fill gap with dash
 	idx = np.isfinite(zcen)
@@ -168,7 +168,7 @@ if __name__ == '__main__':
 		figscale = 0.45
 		figwidth = textwidth*figscale
 		fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(figwidth*2, figwidth*0.95))
-		plt.subplots_adjust(left=0.13/2, right=1-(1-0.98)/2, wspace=0.22, hspace=0.08)
+		plt.subplots_adjust(left=0.13/2, right=1-(1-0.98)/2, wspace=0.14, hspace=0.08)
 
 		plot(ax = ax[:,0])
 		ax[0,0].tick_params(axis='x', labelbottom=False)
@@ -176,6 +176,13 @@ if __name__ == '__main__':
 		from warp_osc import plot as plot2
 		plot2(ax = ax[:,1])
 		ax[0,1].tick_params(axis='x', labelbottom=False)
+
+		ax[0,1].set_ylabel('')
+		ax[1,1].set_ylabel('')
+		ax[0,0].text(-0.11, 0.9, 'a', ha='left', va='bottom', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
+		ax[0,1].text(-0.11, 0.9, 'b', ha='left', va='bottom', color='black', font=subfigureIndexFont, transform=ax[0,1].transAxes)
+		ax[1,0].text(-0.11, 0.9, 'c', ha='left', va='bottom', color='black', font=subfigureIndexFont, transform=ax[1,0].transAxes)
+		ax[1,1].text(-0.11, 0.9, 'd', ha='left', va='bottom', color='black', font=subfigureIndexFont, transform=ax[1,1].transAxes)
 
 		plt.savefig('fig/perosc_warp_corrugation.%s' % (mpl.rcParams['savefig.format']), bbox_inches='tight')
 		plt.savefig('fig/perosc_warp_corrugation.png', bbox_inches='tight')

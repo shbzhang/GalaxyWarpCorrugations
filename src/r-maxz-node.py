@@ -10,6 +10,7 @@ if __name__ == '__main__':
 
 	fig, ax = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(figwidth, figwidth*1.2))
 	plt.subplots_adjust(left=0.11, right=0.95, top=0.95, bottom=0.11, wspace=0.5, hspace=0.5)
+	fig.align_ylabels(ax)
 
 	#AX0 maxZ
 	def warp_cheng(R):
@@ -87,31 +88,74 @@ if __name__ == '__main__':
 				h.append(function_warp((R, phi), p=p_2comp))
 			return np.max(h, axis=0)
 
+	def warp_yusifov2004(R, include_z0=True):
+		# Yusifov (2004), "Pulsars and the Warp of the Galaxy"
+		# Eq. (8) and Eq. (10)
+		# Z_w = C_w (R - R_w)^b_w sin(phi - phi_w) + 15 pc
+		# saturated at R_WS = 15.2 kpc.
+		R = np.asarray(R, dtype=float)
+
+		C_w = 0.037       # kpc, equivalent to 37 pc
+		R_w = 6.5         # kpc
+		b_w = 1.4
+		R_WS = 15.2       # kpc
+		z0 = 0.015 if include_z0 else 0.0  # +15 pc term
+
+		h = np.zeros_like(R)
+		idx = R >= R_w
+		R_eff = np.minimum(R[idx], R_WS)
+		h[idx] = C_w * (R_eff - R_w)**b_w + z0
+
+		return h
+
+	def warp_reyle2009(R):
+		# Reyle et al. (2009), 2MASS old stellar population model.
+		# Maximum-amplitude envelope of z_w = gamma_w (R - R_w) sin(phi - phi_w)
+		# gamma_w = 0.09, R_w = 8.4 kpc, phi_w = 0 deg.
+		R = np.asarray(R, dtype=float)
+		gamma_w = 0.09
+		R_w = 8.4
+		h = np.zeros_like(R)
+		idx = R > R_w
+		h[idx] = gamma_w * (R[idx] - R_w)
+		return h
+
+
 	R = np.linspace(7, 20, 200)
 
-	# 1. 老恒星群体 - 使用暖色调和实线
-	ax[0].plot(R, warp_khanna2025(R), color='#8B4513', linewidth=2.5, label='Red clump (Khanna+2025)', 
-			 alpha=0.8, linestyle='-')
-	ax[0].plot(R, warp_cheng(R), color='#D2691E', linewidth=2.5, label='Gaia DR2/APOGEE (Cheng+2020)', 
-			 alpha=0.8, linestyle='-')
-
-	# 2. 年轻恒星群体 
-	ax[0].plot(R, warp_chen2019(R), color='#1E90FF', linewidth=2.5, label='Cepheids (Chen+2019)', 
-			 alpha=0.8, linestyle='-')
-
-	ax[0].plot(R, warp_poggioYG(R), color='#4682B4', linewidth=2.5, label='Young Giants (Poggio+2025)', 
-			 alpha=0.8, linestyle='--')
-
-	ax[0].plot(R, warp_poggioCeph(R), color='b', linewidth=2.5, label='Cepheids (Poggio+2025)', 
-			 alpha=0.8, linestyle='--')
 
 	# 3. 原子气体 - 使用绿色系和点划线
-	ax[0].plot(R, warp_hi(R), color='#2E8B57', linewidth=2.5, label='HI (Levine+2006)', 
+	ax[0].plot(R, warp_hi(R), color='#2E8B57', linewidth=2.5, label='HI ([4] Levine+2006)', 
 			 alpha=0.8, linestyle='-.')
 
+	# 2. 年轻恒星群体 
+	ax[0].plot(R, warp_chen2019(R), color='#1E90FF', linewidth=2.5, label='Cepheids ([6] Chen+2019)', 
+			 alpha=0.8, linestyle='-')
+
+	ax[0].plot(R, warp_poggioCeph(R), color='b', linewidth=2.5, label='Cepheids ([23] Poggio+2025)', 
+			 alpha=0.8, linestyle='--')
+
+	ax[0].plot(R, warp_poggioYG(R), color='#4682B4', linewidth=2.5, label='Young Giants ([23] Poggio+2025)', 
+			 alpha=0.8, linestyle='--')
+
 	# 4. 分子气体 - 特别突出显示（我们的结果）
-	ax[0].plot(R, warp_co(R), color='r', linewidth=2, label='CO m=1 - This work', 
+	ax[0].plot(R, warp_co(R), color='r', linewidth=2, label='CO $m=1$ (This work)', 
 			 alpha=0.9, linestyle='-', zorder=100)
+
+
+	ax[0].plot(R, warp_yusifov2004(R), color='0.35', linewidth=2.8, label='Pulsars ([63] Yusifov 2004)', 
+		alpha=0.9, linestyle=':')
+
+	ax[0].plot(R, warp_reyle2009(R), color='0.50', linewidth=2.3, label='2MASS stars ([64] Reylé+2009)', 
+		alpha=0.9, linestyle=(0, (5, 2)))
+
+	# 1. 老恒星群体 - 使用暖色调和实线
+	ax[0].plot(R, warp_cheng(R), color='#D2691E', linewidth=2.5, label='Gaia DR2/APOGEE ([62] Cheng+2020)', 
+			 alpha=0.8, linestyle='-')
+
+	ax[0].plot(R, warp_khanna2025(R), color='#8B4513', linewidth=2.5, label='Red clump ([61] Khanna+2025)', 
+			 alpha=0.8, linestyle='-')
+
 
 	# realizations
 	modelFiles = glob.glob('oneCompExc/steps_errD_*pc_*mass.npy')
@@ -138,9 +182,11 @@ if __name__ == '__main__':
 	ax[0].set_ylabel('Maximum Z (kpc)')
 	ax[0].grid(True, alpha=0.3)
 	ax[0].legend(fontsize=16, loc='upper left', framealpha=0.95, ncol=2)
-	ax[0].set_ylim(-0.1, 2.5)
+	ax[0].set_yticks(np.arange(-1,3,0.5))
+	ax[0].set_ylim(-0.1, 2.)
 	ax[0].set_xlim(9.5, 16.6)  # 调整x轴范围
 
+	'''
 	# 调整群体标注框位置
 	ax[0].text(14, 1.3, 'OLD \nPOPULATIONS', fontsize=18, color='#8B4513', 
 			 ha='center', va='center', weight='bold',
@@ -150,7 +196,7 @@ if __name__ == '__main__':
 	ax[0].text(14, 0.2, 'YOUNG \nPOPULATIONS', fontsize=18, color='#1E90FF', 
 			 ha='center', va='center', weight='bold',
 			 bbox=dict(boxstyle="round,pad=0.3", facecolor='#F0F8FF', alpha=0.8))
-
+	'''
 
 	# 打印分组统计信息，特别突出CO结果
 	mR = max(R)
@@ -176,16 +222,16 @@ if __name__ == '__main__':
 
 	#AX1: node
 	def wrap_to_pm180(phi_deg):
-	    phi = np.asarray(phi_deg, dtype=float)
-	    return (phi + 180.0) % 360.0 - 180.0
+		phi = np.asarray(phi_deg, dtype=float)
+		return (phi + 180.0) % 360.0 - 180.0
 
 	def cabrera_to_CO_frame(phi_cab_deg):
-	    return 180.0 - np.asarray(phi_cab_deg, dtype=float)
+		return 180.0 - np.asarray(phi_cab_deg, dtype=float)
 
 	def phi_twisted_cepheids(R):
-	    phi0, Rt, beta = 0.9, 12.6, 8.0
-	    R = np.asarray(R, dtype=float)
-	    return np.where(R <= Rt, phi0, phi0 + beta*(R - Rt))
+		phi0, Rt, beta = 0.9, 12.6, 8.0
+		R = np.asarray(R, dtype=float)
+		return np.where(R <= Rt, phi0, phi0 + beta*(R - Rt))
 
 	# ---- load the 3 curves (Cabrera frame: Sun=180; columns: R, LON) ----
 	cab  = pd.read_csv("LON_R_Cabrera_Gadea_2024.csv")
@@ -216,20 +262,24 @@ if __name__ == '__main__':
 
 
 	# Use SAME styles as amplitude plot
-	ax[1].plot(cab["R"], cab_phi,  color="#555555", lw=2.5, ls="-", alpha=0.8, label="Cabrera+2024 (Cepheids)")
-	ax[1].plot(dehn["R"], dehn_phi, color="g", lw=2.5, ls="-",  alpha=0.8, label="Dehnen+2023 (Cepheids)")
-	ax[1].plot(chen["R"], chen_phi, color="#1E90FF", lw=2.5, ls="--", alpha=0.8, label="Chen+2019 (Cepheids)")
+	#ax[1].plot(chen["R"], chen_phi, color="#1E90FF", lw=2.5, ls="--", alpha=0.8, label="Chen+2019 (Cepheids)")
+	ax[1].plot(chen["R"], chen_phi, color="#1E90FF", lw=2.5, ls="-", alpha=0.8, label="Cepheids ([6] Chen+2019)")
 
-	ax[1].plot(R_grid, pog_phi, color="b", lw=2.5, ls="--", alpha=0.9, label="Poggio+2025 (Cepheids)")
+	ax[1].plot(dehn["R"], dehn_phi, color="g", lw=2.5, ls="-",  alpha=0.8, label="Cepheids ([10] Dehnen+2023)")
+
+	ax[1].plot(cab["R"], cab_phi,  color="#555555", lw=2.5, ls="-", alpha=0.8, label="Cepheids ([11] Cabrera+2024)")
+
+	ax[1].plot(R_grid, pog_phi, color="b", lw=2.5, ls="--", alpha=0.9, label="Cepheids ([23] Poggio+2025)")
 
 	# CO points: keep consistent with your “This work” highlight (open markers)
 	ax[1].scatter(R_co, phi_co_plot, s=70, facecolors="grey", edgecolors="r",
-	           linewidths=2.0, zorder=10, label="CO (this work)")
+			   linewidths=2.0, zorder=10, label="CO $m=1$ (This work)")
 	ax[1].errorbar(R_co, phi_co_plot, yerr=[phi_co_error_lo, phi_co_error_hi], linestyle='none', ecolor='r', elinewidth=2, capsize=4, capthick=2)
 
 	# Axis labels consistent with amplitude plot
 	ax[1].set_xlabel("R (kpc)")
-	ax[1].set_ylabel(r"$\phi_{\rm LON}$ (deg)")
+	c = ax[1].set_ylabel(r"${ϕ_{\mathbf{LON}}}$ (deg)")
+	#ax[1].text(-0.05, 0.5, r"$ {ϕ_{\rm LON}}$ (deg)", transform=ax[1].transAxes, rotation=90, fontsize=20, ha='center', va='center')
 
 	ax[1].grid(True, alpha=0.3)
 	ax[1].set_xlim(9.5, 16.6)       # match amplitude’s x-range if you want

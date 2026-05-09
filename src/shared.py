@@ -86,22 +86,22 @@ def darkerColor(color_name, factor=0.5):
 
 ### kws in ring plots: warp1.py / warp1_xf.py / warp_resi.py
 ring_kws_mc   = dict(color='#2074b0', edgecolors='none', alpha=0.2, zorder=5)
-ring_kws_bin  = dict(color=darkerColor('#2074b0'),  lw=2, alpha=0.8, zorder=20)#5ABEF0
-ring_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1,   label=labelHI,   zorder=11)
+ring_kws_bin  = dict(color=darkerColor('#2074b0'),  lw=2, alpha=0.8, zorder=13)#5ABEF0
+ring_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1.8,   label=labelHI,   zorder=11)
 ring_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1,   label=labelCeph, zorder=12)
 ring_kws_rc   = dict(color=colorRC,   ls=styleRC,   lw=1,   label=labelRC,   zorder=13)
-ring_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=0.8, label=labelCO1,  zorder=14)
+ring_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=2.0, label=labelCO1,  zorder=14)
 ring_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=0.8, label=labelCO2,  zorder=15)
 ring_kws_sin  = dict(color=colorCO1,  ls=(0, (1.5,1)),lw=3,   label='SIN comp',zorder=16)
 ring_kws_text = dict(color=colorText, ha='left', va='top', fontsize=20, fontweight='bold')
 
 ### kws in radial plots: corrugation1b.py, corrugation_resi.py, corrugation_resi_xf.py
 rad_kws_mc   = dict(color='#008080', edgecolors='none', alpha=0.3, zorder=5)
-rad_kws_err  = dict(color=darkerColor('#008080'), fmt='.', markersize=5., elinewidth = 1, capsize=2, zorder=10)
-rad_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1.5, label=labelHI,   zorder=11)
+rad_kws_err  = dict(color=darkerColor('#008080'), fmt='.', markersize=10., elinewidth = 1, capsize=2, zorder=10)
+rad_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=2.0, label=labelHI,   zorder=11)
 rad_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1.5, label=labelCeph, zorder=12)
 rad_kws_rc   = dict(color=colorRC,   ls=styleRC,   lw=1.5, label=labelRC,   zorder=13)
-rad_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=1,   label=labelCO1,  zorder=14)
+rad_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=2.1, label=labelCO1,  zorder=14)
 rad_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zorder=15)
 rad_kws_sin  = dict(color=colorCO1,  ls=':',       lw=3,   label='SIN comp',zorder=11)
 rad_kws_text = dict(color=colorText, ha='left', va='top', fontsize=20, fontweight='bold')
@@ -111,18 +111,22 @@ rad_sep = [155, 143, 131, 119, 107, 95, 83, 71, 59, 47, 38, 29, 20, 10, -7, -16,
 ### kws in arm plots: warp_out.py / warp_per.py / warp_osc.py / warp_osc_b.py
 arm_kws_mc   = dict(color='#4169e1', edgecolors='none', alpha=0.2, zorder=5)
 arm_kws_bin  = dict(color=darkerColor('#4169e1'),  lw=2, alpha=0.8, zorder=20)
-arm_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=1.5, label=labelHI,   zorder=11)
+arm_kws_hi   = dict(color=colorHI,   ls=styleHI,   lw=2.2, label=labelHI,   zorder=11)
 arm_kws_ceph = dict(color=colorCeph, ls=styleCeph, lw=1.5, label=labelCeph, zorder=12)
 arm_kws_rc   = dict(color=colorRC,   ls=styleRC,   lw=1.5, label=labelRC,   zorder=13)
-arm_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=1,   label=labelCO1,  zorder=14)
+arm_kws_co1  = dict(color=colorCO1,  ls=styleCO1,  lw=2.5,   label=labelCO1,  zorder=14)
 arm_kws_co2  = dict(color=colorCO2,  ls=styleCO2,  lw=1,   label=labelCO2,  zorder=15)
 arm_kws_text = dict(color=colorText, ha='left', va='top', fontsize=20, fontweight='bold')
 
 textwidth=18 #inches, width of text in latex
 subfigureIndexFont = dict(family="Arial Black", size=28)
+
+mpl.rcParams['font.sans-serif'] = ['Arial']
+mpl.rcParams['font.family'] = 'sans-serif'
 mpl.rcParams['savefig.format'] = 'pdf'
 mpl.rcParams['savefig.dpi'] = 280
-mpl.rcParams['axes.linewidth'] = 0.8
+mpl.rcParams['figure.labelsize'] = 20
+mpl.rcParams['figure.labelweight'] = 'bold'
 mpl.rcParams['axes.labelsize'] = 20
 mpl.rcParams['axes.labelweight'] = 'bold'
 mpl.rcParams['xtick.labelsize'] = 18
@@ -238,6 +242,7 @@ def mass_distribute(mass):
 
 
 def cal_warp_HI(R = np.linspace(7.5,22,200), PHI = np.linspace(-30,170,200), scale=0.95):
+	# THE VERTICAL STRUCTURE OF THE OUTER MILKY WAY HI DISK
 	# regulate R, PHI *95%
 	R, PHI = np.broadcast_arrays(R, PHI)
 	#if isinstance(R, (int, float)):
@@ -532,8 +537,8 @@ def insert_arm_plot(ax, bbox, boldArm='per', boldRange=[-50, 100]):
 
 	ell = Ellipse(xy = (0,0), width=3, height=7, angle=-30.5, facecolor='gray', edgecolor='none')
 	sk.add_patch(ell)
-	sk.plot(0, 8.15, 'r.', ms=4)
-	sk.plot(0, 0, 'k.', ms=4)
+	sk.plot(0, 8.15, 'r.', ms=10)
+	sk.plot(0, 0, 'k.', ms=8)
 
 	sk.set_aspect('equal')
 	sk.axis('off')

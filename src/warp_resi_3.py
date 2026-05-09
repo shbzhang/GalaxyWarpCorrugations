@@ -85,7 +85,8 @@ if __name__ == '__main__':
 		#azcen, azrms, zcen, zrms = bin_data(az[idx], zz[idx], weight[idx], grid=np.arange(160, -50, -6), width=12, method='gauss')
 		#ax.errorbar(azcen, zcen, yerr=zrms*2.355/2., color='r', lw=5, alpha=0.5, zorder=100)
 
-		### plot H line
+		### plot H line Z=0
+		'''
 		if comp==1:
 			ring_kws_co1['label'] = None
 			ring_kws_co1['zorder'] = 0
@@ -93,7 +94,8 @@ if __name__ == '__main__':
 		else:
 			ring_kws_co2['zorder']=0
 			ax.plot([az_min, az_max], [0, 0], **ring_kws_co2)
-
+		'''
+		ax.plot([az_min, az_max], [0, 0], color='grey', alpha=0.6, lw=1, zorder=0, linestyle='-')
 		'''
 		### plot warp models
 		# HI
@@ -152,7 +154,7 @@ if __name__ == '__main__':
 			zmodels = []
 			for s in steps:
 				zmodels.append(np.array([phiaxis, function_warp((raxis, phiaxis), p=[0,0,0,0,0], circ=s)]).T)
-			lc = LineCollection(zmodels, color='peachpuff', alpha=0.15, lw=1, zorder=10)
+			lc = LineCollection(zmodels, color='peachpuff', alpha=0.15, lw=1, zorder=1)
 			lc.set_rasterized(True)
 			ax.add_collection(lc)
 
@@ -181,7 +183,7 @@ if __name__ == '__main__':
 		#	ax.set_xticklabels([])
 		#if i == 5:
 		ax.set_xlabel('Galactocentric Azimuth (deg)')
-		ax.set_ylabel('$\mathbf{\Delta}$Z (kpc)', labelpad=-10)
+		ax.set_ylabel('$\mathbf{\Delta}$Z (kpc)', labelpad=-5)
 
 		### slightly shift upper ticklabel position to avoid overlap
 		if i<=2: upper.set_xticklabels(['  0', '20', None, None, None]) # avoid overlap

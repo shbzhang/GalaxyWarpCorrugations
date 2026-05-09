@@ -109,12 +109,15 @@ if __name__ == '__main__':
 				ax[i].plot(raxis, zaxis, **rad_kws_sin)
 
 		### plot h line
+		'''
 		if comp==1:
 			rad_kws_co1['zorder']=0
 			ax[i].plot([0, 30], [0, 0], **rad_kws_co1)
 		else:
 			rad_kws_co2['zorder']=0
 			ax[i].plot([0, 30], [0, 0], **rad_kws_co2)
+		'''
+		ax[i].plot([0, 30], [0, 0], color='grey', alpha=0.6, lw=1, zorder=0, linestyle='-')
 
 		### plot text
 		#rad_kws_text['fontsize']=14
@@ -132,13 +135,14 @@ if __name__ == '__main__':
 
 
 		if i == 10:
+			pass
 			### arm labels
 			#ax[i].plot([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
 			#for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, -0.2, -0.25/comp], ['      Perseus', '    Outer', '  OSC']):
 			#	ax[i].text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
 			### label
-			ax[i].set_xlabel('R (kpc)')
-			ax[i].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
+			#ax[i].set_xlabel('R (kpc)')
+			#ax[i].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
 		if i>=10:
 			xtk = ax[i].get_xticks().astype(str)
 			xtk[2] = '  '+xtk[2]	#shift '8' a little right
@@ -148,7 +152,16 @@ if __name__ == '__main__':
 		ax[i].set_xlim(8, 19)
 		ax[i].set_ylim(-0.8, 0.8)
 
-	ax[0].text(-0.30, 0.94, 'a' if comp==1 else 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#ax[0].text(-0.30, 0.94, 'a' if comp==1 else 'b', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+
+	ax11 = fig.add_subplot(111, frameon=False)
+	ax11.tick_params(which='both', labelcolor='none', top=False, bottom=False, left=False, right=False)
+	ax11.set_xlabel('R (kpc)')
+	ax11.set_ylabel('$\mathbf{\Delta}$Z (kpc)')
+	#if comp==1:
+	#	ax11.set_ylabel('$\mathbf{\Delta}$Z=Z$-$Z$\mathbf{_{w,m=1}}$ (kpc)', labelpad=11)
+	#else:
+	#	ax11.set_ylabel('$\mathbf{\Delta}$Z=Z$-$Z$\mathbf{_{w,m=1,2}}$ (kpc)', labelpad=11)
 
 	if ceph: bn = 'fig/r_dz_MC_Ceph_%icomp%s' % (comp, suffix)
 	elif ob: bn = 'fig/r_dz_MC_OB_%icomp%s' % (comp, suffix)

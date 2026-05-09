@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
 	### plot H line
 	arm_kws_co1['zorder']=0
-	ax[1].plot([PHI[0], PHI[-1]], [0, 0], **arm_kws_co1)
+	#ax[1].plot([PHI[0], PHI[-1]], [0, 0], **arm_kws_co1)
 
 	ax[1].set_yticks(np.arange(-3, 3, 0.2))
 	ax[1].set_ylim([-0.5, 0.5])

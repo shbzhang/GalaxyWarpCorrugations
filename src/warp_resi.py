@@ -11,7 +11,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 suffix = ''#'_xf'
-comp = 1 #1,2
+comp = 2 #1,2
 ceph = 0
 ob = 0
 
@@ -79,6 +79,7 @@ if __name__ == '__main__':
 		ax[i].errorbar(azcen[idx], zcen[idx], yerr=zrms[idx]*2.355/2., fmt='^', c='#777777', markersize=0.05, elinewidth=1, capsize=1.1, zorder=15)
 
 		### plot H line
+		'''
 		if comp==1:
 			ring_kws_co1['label'] = None
 			ring_kws_co1['zorder']=0
@@ -86,6 +87,8 @@ if __name__ == '__main__':
 		else:
 			ring_kws_co2['zorder']=0
 			ax[i].plot([az_min, az_max], [0, 0], **ring_kws_co2)
+		'''
+		ax[i].plot([az_min, az_max], [0, 0], color='grey', alpha=0.6, lw=1, zorder=0, linestyle='-')
 
 		### plot cepheids
 		if ceph:
@@ -161,9 +164,9 @@ if __name__ == '__main__':
 			ax[i].set_xticklabels(['%i' % i for i in np.arange(-50, 200, 50)])
 		else:
 			ax[i].set_xticklabels([])
-		if i == lowerLeftIdx:
-			ax[i].set_xlabel('Galactocentric Azimuth (deg)')
-			ax[i].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
+		#if i == lowerLeftIdx:
+		#	ax[i].set_xlabel('Galactocentric Azimuth (deg)')
+		#	ax[i].set_ylabel('$\mathbf{\Delta}$Z (kpc)')
 
 
 
@@ -234,11 +237,20 @@ if __name__ == '__main__':
 		elif i==9: upper.set_xticklabels(['  0', '20', '40', '60 kpc', None]) # add kpc at the end
 		#if i==9: ax[i].legend()
 		'''
-	if comp==1:
-		ax[0].text(-0.25, 1.02, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
-	else:
-		ax[0].text(-0.25, 1.02, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#if comp==1:
+	#	ax[0].text(-0.25, 1.02, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
+	#else:
+	#	ax[0].text(-0.25, 1.02, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
+	ax11 =fig.add_subplot(111, frameon=False)
+	ax11.tick_params(which='both', labelcolor='none', top=False, bottom=False, left=False, right=False)
+	ax11.set_xlabel('Galactocentric Azimuth (deg)', visible=True)
+	ax11.set_ylabel('$\mathbf{\Delta}$Z (kpc)')
+	#if comp==1:
+	#	ax11.set_ylabel('$\mathbf{\Delta}$Z=Z$-$Z$\mathbf{_{w,m=1}}$ (kpc)', labelpad=11)
+	#else:
+	#	ax11.set_ylabel('$\mathbf{\Delta}$Z=Z$-$Z$\mathbf{_{w,m=1,2}}$ (kpc)', labelpad=11)
+	
 
 	if ceph: bn = 'fig/az_dz_MC_Ceph_%icomp%s' % (comp, suffix)
 	elif ob: bn = 'fig/az_dz_MC_OB_%icomp%s' % (comp, suffix)

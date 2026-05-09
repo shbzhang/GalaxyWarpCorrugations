@@ -29,6 +29,100 @@ ringwave = True
 print('Running with %i component(s) and %s l in [195, 200] and in %s component' % (component, 'excluding' if excluded else 'including', 'corrugation' if sin else 'warp'))
 print('%-10s: %i' % ('component', component))
 
+'''
+#TABLE 1
+\textbf{\(m=1\)} 
+& $a_1$ (kpc$^{1-b_{w1}}$) & +0.110 & $^{+0.006}_{-0.002}$ & $^{+0.071}_{-0.019}$ \\
+& $R_{w1}$ (kpc)           & +8.64 & $^{+0.07}_{-0.03}$ & $^{+0.74}_{-0.09}$ \\
+& $b_{w1}$                 & +0.971 & $^{+0.011}_{-0.024}$ & $^{+0.086}_{-0.215}$ \\
+& $\phi_{w1}$ (deg)        & -1.40 & $^{+0.21}_{-0.20}$ & $^{+0.62}_{-0.38}$ \\
+%& $a_1$ (kpc$^{1-b_{w1}}$) & +0.1103 & $^{+0.0058}_{-0.0024}$& $^{+0.0714}_{-0.0194}$ \\
+%& $R_{w1}$ (kpc) & +8.645 & $^{+0.074}_{-0.030}$& $^{+0.744}_{-0.088}$ \\
+%& $b_{w1}$  & +0.9714 & $^{+0.0113}_{-0.0236}$& $^{+0.0858}_{-0.2153}$ \\
+%& $\phi_{w1}$ (deg) & -1.396 & $^{+0.207}_{-0.203}$& $^{+0.616}_{-0.383}$ \\
+\midrule
+\textbf{\(m=1,2\)} 
+& $a_1$ & +0.132           & $^{+0.002}_{-0.002}$ & $^{+0.018}_{-0.022}$\\
+& $R_{w1}$ (kpc)           & +9.14 & $^{+0.03}_{-0.04}$ & $^{+0.23}_{-0.21}$\\
+& $\phi_{w1}$ (deg)        & -5.21 & $^{+0.26}_{-0.30}$ & $^{+1.31}_{-0.20}$\\
+& $a_2$ (kpc$^{1-b_{w2}}$) & -0.0189 & $^{+0.0039}_{-0.0044}$ & $^{+0.0037}_{-0.0194}$\\
+& $R_{w2}$ (kpc) & +12.2   & $^{+0.2}_{-0.2}$ & $^{+1.1}_{-0.3}$\\
+& $b_{w2}$                 & +1.83 & $^{+0.09}_{-0.09}$ & $^{+0.10}_{-0.29}$\\
+& $\phi_{w2}$ (deg)        & -18.7 & $^{+0.8}_{-0.8}$ & $^{+3.3}_{-3.6}$\\
+%& $a_1$ & +0.1320 & $^{+0.0017}_{-0.0023}$& $^{+0.0183}_{-0.0215}$ \\
+%& $R_{w1}$ (kpc) & +9.138 & $^{+0.031}_{-0.040}$& $^{+0.235}_{-0.210}$ \\
+%& $\phi_{w1}$ (deg) & -5.210 & $^{+0.262}_{-0.299}$& $^{+1.306}_{-0.203}$ \\
+%& $a_2$ (kpc$^{1-b_{w2}}$) & -0.01893 & $^{+0.00388}_{-0.00441}$& $^{+0.00368}_{-0.01942}$ \\
+%& $R_{w2}$ (kpc) & +12.20 & $^{+0.17}_{-0.17}$& $^{+1.05}_{-0.29}$ \\
+%& $b_{w2}$ & +1.834 & $^{+0.094}_{-0.090}$& $^{+0.105}_{-0.289}$ \\
+%& $\phi_{w2}$ (deg) & -18.68 & $^{+0.75}_{-0.80}$& $^{+3.35}_{-3.63}$ \\
+
+#TABLE 2
+\multicolumn{8}{l}{\textbf{Primary Radial Feature (Sector $\phi_{11}$)}} \\
+& $a_{\rm rad}$ (kpc)             & +0.164 & $^{+0.004}_{-0.005}$ & $^{+0.003}_{-0.005}$ & +0.138 & $^{+0.004}_{-0.004}$ & $^{+0.002}_{-0.004}$ \\
+& $P_{\rm rad}$ (kpc)             & +5.23 & $^{+0.08}_{-0.09}$ & $^{+0.01}_{-0.03}$ & +4.46 & $^{+0.07}_{-0.07}$ & $^{+0.01}_{-0.01}$ \\
+& $a_{\rm 0,rad}$ (kpc)           & +0.0957 & $^{+0.0039}_{-0.0042}$ & $^{+0.0024}_{-0.0049}$ & +0.0678 & $^{+0.0037}_{-0.0038}$ & $^{+0.0023}_{-0.0038}$ \\
+& $R_{\rm rad}$ (kpc)             & +11.415 & $^{+0.021}_{-0.021}$ & $^{+0.004}_{-0.007}$ & +11.35 & $^{+0.02}_{-0.02}$ & $^{+0.01}_{-0.01}$ \\
+& $\sigma_{R_{\rm rad}}$ (kpc)    & +4.13 & $^{+0.35}_{-0.25}$ & $^{+0.13}_{-0.13}$ & +6.34 & $^{+1.01}_{-0.67}$ & $^{+0.50}_{-0.53}$ \\
+& $\phi_{\rm rad}$ (deg)          & +31.9 & $^{+0.3}_{-0.3}$ & $^{+0.2}_{-0.3}$ & +31.9 & $^{+0.3}_{-0.3}$ & $^{+0.2}_{-0.3}$ \\
+& $\sigma_{\phi_{\rm rad}}$ (deg) & +9.52 & $^{+0.23}_{-0.22}$ & $^{+0.07}_{-0.05}$ & +8.48 & $^{+0.23}_{-0.25}$ & $^{+0.03}_{-0.03}$ \\
+%& $a_{\rm rad}$ (kpc)             & +0.1642 & $^{+0.0041}_{-0.0045}$ & $^{+0.0027}_{-0.0050}$ & +0.1382 & $^{+0.0043}_{-0.0044}$ & $^{+0.0020}_{-0.0040}$\\
+%& $P_{\rm rad}$ (kpc)             & +5.226 & $^{+0.084}_{-0.089}$ & $^{+0.014}_{-0.030}$ & +4.462 & $^{+0.068}_{-0.065}$ & $^{+0.010}_{-0.009}$ \\
+%& $a_{\rm 0,rad}$ (kpc)           & +0.09565 & $^{+0.00389}_{-0.00419}$ & $^{+0.00238}_{-0.00487}$ & +0.06783 & $^{+0.00371}_{-0.00378}$ & $^{+0.00233}_{-0.00380}$ \\
+%& $R_{\rm rad}$ (kpc)             & +11.415 & $^{+0.021}_{-0.021}$ & $^{+0.004}_{-0.007}$ & +11.35 & $^{+0.02}_{-0.02}$ & $^{+0.01}_{-0.01}$ \\
+%& $\sigma_{R_{\rm rad}}$ (kpc)    & +4.129 & $^{+0.346}_{-0.251}$ & $^{+0.131}_{-0.133}$ & +6.341 & $^{+1.009}_{-0.666}$ & $^{+0.495}_{-0.526}$ \\
+%& $\phi_{\rm rad}$ (deg)          & +31.93 & $^{+0.29}_{-0.29}$ & $^{+0.16}_{-0.29}$ & +31.94 & $^{+0.35}_{-0.33}$ & $^{+0.23}_{-0.28}$ \\
+%& $\sigma_{\phi_{\rm rad}}$ (deg) & +9.518 & $^{+0.229}_{-0.221}$ & $^{+0.073}_{-0.052}$ & +8.477 & $^{+0.227}_{-0.249}$ & $^{+0.031}_{-0.026}$ \\
+\midrule
+\multicolumn{8}{l}{\textbf{Primary Azimuthal Feature ($R \approx 12.7$ kpc)}} \\
+& $a_{\rm az}$ (kpc)          & +0.120 & $^{+0.004}_{-0.004}$ & $^{+0.002}_{-0.003}$ & +0.118 & $^{+0.004}_{-0.004}$ & $^{+0.001}_{-0.001}$ \\
+& $P_{\rm az}$ (deg)          & +52.6 & $^{+0.3}_{-0.3}$ & $^{+0.3}_{-0.6}$ & +53.3 & $^{+0.3}_{-0.3}$ & $^{+0.4}_{-0.4}$ \\
+& $\phi_{\rm az}$ (deg)       & +21.4 & $^{+0.3}_{-0.2}$ & $^{+0.3}_{-0.2}$ & +20.5 & $^{+0.2}_{-0.2}$ & $^{+0.3}_{-0.2}$ \\
+& $R_{\rm az}$ (kpc)          & +12.70 & $^{+0.04}_{-0.04}$ & $^{+0.07}_{-0.04}$ & +12.55 & $^{+0.04}_{-0.04}$ & $^{+0.05}_{-0.03}$ \\
+& $\sigma_{R_{\rm az}}$ (kpc) & +0.944 & $^{+0.029}_{-0.029}$ & $^{+0.035}_{-0.028}$ & +0.882 & $^{+0.028}_{-0.027}$ & $^{+0.029}_{-0.022}$ \\
+%& $a_{\rm az}$ (kpc)          & +0.1202 & $^{+0.0042}_{-0.0039}$ & $^{+0.0018}_{-0.0029}$ & +0.1182 & $^{+0.0037}_{-0.0044}$ & $^{+0.0012}_{-0.0012}$ \\
+%& $P_{\rm az}$ (deg)          & +52.57 & $^{+0.33}_{-0.31}$ & $^{+0.32}_{-0.57}$ & +53.29 & $^{+0.34}_{-0.34}$ & $^{+0.35}_{-0.41}$ \\
+%& $\phi_{\rm az}$ (deg)       & +21.40 & $^{+0.27}_{-0.23}$ & $^{+0.34}_{-0.23}$ & +20.50 & $^{+0.25}_{-0.23}$ & $^{+0.27}_{-0.23}$ \\
+%& $R_{\rm az}$ (kpc)          & +12.70 & $^{+0.04}_{-0.04}$ & $^{+0.07}_{-0.04}$ & +12.55 & $^{+0.04}_{-0.04}$ & $^{+0.05}_{-0.03}$ \\
+%& $\sigma_{R_{\rm az}}$ (kpc) & +0.9439 & $^{+0.0292}_{-0.0285}$ & $^{+0.0354}_{-0.0279}$ & +0.8821 & $^{+0.0278}_{-0.0273}$ & $^{+0.0288}_{-0.0218}$ \\
+\midrule
+\multicolumn{8}{l}{\textit{Other Radial Sectors} $^{\dagger}$} \\
+$\phi_{\rm 1\text{--}2}$   & $a_{\rm rad}$ (kpc)    & +0.0991 & $^{+0.0050}_{-0.0064}$ & $^{+0.0037}_{-0.0036}$ & +0.0809 & $^{+0.0058}_{-0.0067}$ & $^{+0.0036}_{-0.0032}$ \\
+								  & $P_{\rm rad}$ (kpc)    & +7.88 & $^{+0.28}_{-0.19}$ & $^{+0.19}_{-0.17}$ & +8.06 & $^{+0.40}_{-0.26}$ & $^{+0.25}_{-0.21}$ \\
+								  & $R_{\rm rad}$ (kpc)    & +12.0 & $^{+0.1}_{-0.1}$ & $^{+0.1}_{-0.1}$ & +12.0 & $^{+0.1}_{-0.1}$ & $^{+0.1}_{-0.1}$ \\
+								  & $\phi_{\rm rad}$ (deg) & +144.9 & $^{+0.9}_{-0.8}$ & $^{+0.3}_{-0.2}$ & +147.0 & $^{+1.2}_{-0.8}$ & $^{+0.4}_{-0.3}$ \\
+%$\phi_{\rm 1\text{--}2}$   & $a_{\rm rad}$ (kpc) & +0.09907 & $^{+0.00496}_{-0.00644}$ & $^{+0.00374}_{-0.00363}$ & +0.08088 & $^{+0.00582}_{-0.00668}$ & $^{+0.00364}_{-0.00316}$ \\
+%                                  & $P_{\rm rad}$ (kpc) & +7.884 & $^{+0.281}_{-0.195}$ & $^{+0.193}_{-0.170}$ & +8.058 & $^{+0.397}_{-0.258}$ & $^{+0.247}_{-0.207}$ \\
+%                                  & $R_{\rm rad}$ (kpc) & +12.02 & $^{+0.11}_{-0.08}$ & $^{+0.10}_{-0.07}$ & +12.02 & $^{+0.14}_{-0.10}$ & $^{+0.13}_{-0.08}$ \\
+%                                  & $\phi_{\rm rad}$ (deg) & +144.9 & $^{+0.9}_{-0.8}$ & $^{+0.3}_{-0.2}$ & +147.0 & $^{+1.2}_{-0.8}$ & $^{+0.4}_{-0.3}$ \\
+\addlinespace
+$\phi_{\rm 4\text{--}5}$   & $a_{\rm rad}$ (kpc)    & -0.0823 & $^{+0.0060}_{-0.0052}$ & $^{+0.0005}_{-0.0005}$ & -0.1066 & $^{+0.0055}_{-0.0048}$ & $^{+0.0004}_{-0.0004}$ \\
+								  & $P_{\rm rad}$ (kpc)    & +3.86 & $^{+0.29}_{-0.15}$ & $^{+0.12}_{-0.07}$ & +3.80 & $^{+0.14}_{-0.10}$ & $^{+0.03}_{-0.02}$ \\
+								  & $R_{\rm rad}$ (kpc)    & +10.07 & $^{+0.04}_{-0.06}$ & $^{+0.01}_{-0.02}$ & +10.276 & $^{+0.035}_{-0.030}$ & $^{+0.003}_{-0.002}$ \\
+								  & $\phi_{\rm rad}$ (deg) & +104.8 & $^{+0.7}_{-1.0}$ & $^{+0.3}_{-0.4}$ & +104.0 & $^{+0.7}_{-0.9}$ & $^{+0.2}_{-0.3}$ \\
+%$\phi_{\rm 4\text{--}5}$   & $a_{\rm rad}$ (kpc) & -0.08233 & $^{+0.00600}_{-0.00516}$ & $^{+0.00047}_{-0.00052}$ & -0.1066 & $^{+0.0055}_{-0.0048}$ & $^{+0.0004}_{-0.0004}$ \\
+%                                  & $P_{\rm rad}$ (kpc) & +3.864 & $^{+0.291}_{-0.152}$ & $^{+0.125}_{-0.067}$ & +3.803 & $^{+0.143}_{-0.099}$ & $^{+0.030}_{-0.022}$ \\
+%                                  & $R_{\rm rad}$ (kpc) & +10.07 & $^{+0.04}_{-0.06}$ & $^{+0.01}_{-0.02}$ & +10.276 & $^{+0.035}_{-0.030}$ & $^{+0.003}_{-0.002}$ \\
+%                                  & $\phi_{\rm rad}$ (deg) & +104.8 & $^{+0.7}_{-1.0}$ & $^{+0.3}_{-0.4}$ & +104.0 & $^{+0.7}_{-0.9}$ & $^{+0.2}_{-0.3}$ \\
+\addlinespace
+$\phi_{\rm 8\text{--}9}$   & $a_{\rm rad}$ (kpc)    & -0.0751 & $^{+0.0041}_{-0.0033}$ & $^{+0.0010}_{-0.0013}$ & -0.112 & $^{+0.004}_{-0.004}$ & $^{+0.001}_{-0.001}$ \\
+								  & $P_{\rm rad}$ (kpc)    & +4.16 & $^{+0.08}_{-0.07}$ & $^{+0.02}_{-0.02}$ & +4.430 & $^{+0.057}_{-0.056}$ & $^{+0.003}_{-0.007}$ \\
+								  & $R_{\rm rad}$ (kpc)    & +10.64 & $^{+0.03}_{-0.03}$ & $^{+0.01}_{-0.01}$ & +10.736 & $^{+0.023}_{-0.023}$ & $^{+0.001}_{-0.003}$ \\
+								  & $\phi_{\rm rad}$ (deg) & +61.6 & $^{+0.5}_{-0.5}$ & $^{+0.1}_{-0.1}$ & +61.09 & $^{+0.36}_{-0.39}$ & $^{+0.02}_{-0.02}$ \\
+%$\phi_{\rm 8\text{--}9}$   & $a_{\rm rad}$ (kpc)    & -0.07515 & $^{+0.00405}_{-0.00335}$ & $^{+0.00100}_{-0.00128}$ & -0.1122 & $^{+0.0038}_{-0.0036}$ & $^{+0.0008}_{-0.0010}$ \\
+%                                  & $P_{\rm rad}$ (kpc)    & +4.162 & $^{+0.079}_{-0.070}$ & $^{+0.015}_{-0.015}$ & +4.430 & $^{+0.057}_{-0.056}$ & $^{+0.003}_{-0.007}$ \\
+%                                  & $R_{\rm rad}$ (kpc)    & +10.64 & $^{+0.03}_{-0.03}$ & $^{+0.01}_{-0.01}$ & +10.736 & $^{+0.023}_{-0.023}$ & $^{+0.001}_{-0.003}$ \\
+%                                  & $\phi_{\rm rad}$ (deg) & +61.60 & $^{+0.54}_{-0.49}$ & $^{+0.12}_{-0.10}$ & +61.09 & $^{+0.36}_{-0.39}$ & $^{+0.02}_{-0.02}$ \\
+\addlinespace
+$\phi_{\rm 14\text{--}15}$ & $a_{\rm rad}$ (kpc)    & -0.0753 & $^{+0.0091}_{-0.0119}$ & $^{+0.0138}_{-0.0125}$ & -0.0737 & $^{+0.0101}_{-0.0139}$ & $^{+0.0046}_{-0.0062}$ \\
+								  & $P_{\rm rad}$ (kpc)    & +6.27 & $^{+0.37}_{-0.41}$ & $^{+1.32}_{-0.80}$ & +4.29 & $^{+0.30}_{-0.16}$ & $^{+0.40}_{-0.12}$ \\
+								  & $R_{\rm rad}$ (kpc)    & +14.7 & $^{+0.1}_{-0.1}$ & $^{+0.5}_{-0.2}$ & +14.3 & $^{+0.1}_{-0.1}$ & $^{+0.1}_{-0.1}$ \\
+								  & $\phi_{\rm rad}$ (deg) & -18.0 & $^{+0.6}_{-0.8}$ & $^{+0.9}_{-0.8}$ & -18.1 & $^{+0.8}_{-1.0}$ & $^{+0.2}_{-0.4}$ \\
+%$\phi_{\rm 14\text{--}15}$ & $a_{\rm rad}$ (kpc)    & -0.07530 & $^{+0.00911}_{-0.01188}$ & $^{+0.01385}_{-0.01245}$ & -0.07367 & $^{+0.01012}_{-0.01387}$ & $^{+0.00465}_{-0.00623}$ \\
+%                                  & $P_{\rm rad}$ (kpc)    & +6.271 & $^{+0.374}_{-0.412}$ & $^{+1.320}_{-0.798}$ & +4.292 & $^{+0.295}_{-0.156}$ & $^{+0.399}_{-0.116}$ \\
+%                                  & $R_{\rm rad}$ (kpc)    & +14.74 & $^{+0.14}_{-0.13}$ & $^{+0.52}_{-0.25}$ & +14.28 & $^{+0.08}_{-0.06}$ & $^{+0.15}_{-0.06}$ \\
+%                                  & $\phi_{\rm rad}$ (deg) & -18.05 & $^{+0.64}_{-0.80}$ & $^{+0.95}_{-0.80}$ & -18.10 & $^{+0.82}_{-1.05}$ & $^{+0.15}_{-0.41}$ \\
+'''
 Rsun = 8.15 #kpc
 
 if component == 1: path = 'oneComp'
@@ -331,8 +425,17 @@ def lnlike(free_params, data):
 
 def lnlike_normalized(free_params, data):
 	#likelihood, or probability
-	R, PHI, Z, mass, err2_Z = data
-	LnProb = -0.5 * np.sum( (Z - function((R, PHI), free_params))**2 * norm_mass )
+	R, PHI, Z, mass, err2_Z, err2_R = data
+	if sin and radwave:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Arad, Rrad, sigmaRrad, Period0, Period1, phase, Arad0, PHIrad, sigmaPHIrad = fp2p(free_params)
+	elif sin and ringwave:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Acirc, PHIcirc, sigmaPHIcirc, Period0, Period1, Rcirc, sigmaRcirc = fp2p(free_params)
+	else:
+		a0, a1, Rw1, bw1, PHIw1, H, a2, Rw2, bw2, PHIw2, Arad, Rrad, Period0, Period1, Arad0, PHIcirc, sigmaPHIcirc = fp2p(free_params)
+
+	Sig2 = (err2_Z + H**2) / mass
+
+	LnProb = -0.5 * np.sum( (Z - function((R, PHI), free_params))**2 / Sig2 + np.log(2*np.pi*Sig2) )
 	return LnProb
 def lnprior(free_params):
 	#criteria of fitting
@@ -770,14 +873,15 @@ if __name__ == '__main__':
 			up = modelP.max(axis=0)-best
 			lo = modelP.min(axis=0)-best
 			return lo, up
-		def scientificNotationTitle(v, *lu, digit=4):
+		def scientificNotation(v, *lu, digit=3):
 			### show value, lower, and upper uncertainty in scientific notation format
 			e = np.floor(np.log10(np.abs(v)))
 			### dont convert xx.xx to x.xxx*10^1
 			if e == 1:
 				e = 0
-				mind = 2
-			else: mind = 3
+				mind = digit-2 #keep dd.d if digit=3
+			else: mind = digit-1 #keep d.dd if digit=3
+			#mind is the digits after dot
 			vs = v/10**e
 			lus = [k/10**e for k in lu]
 			### show more digit if any error is zero
@@ -888,35 +992,36 @@ if __name__ == '__main__':
 			# systematic uncertainty
 			syslo, sysup = systematicUncertainty('steps_errD_???pc_*mass*', bestmed)
 			for i in range(len(bestmed)):
-				scientificNotationTitle(bestmed[i], stalo[i], staup[i], syslo[i], sysup[i])
+				scientificNotation(bestmed[i], stalo[i], staup[i], syslo[i], sysup[i])
 		else:
 			# statistical uncertainty
 			stalo, staup = statisticalUncertainty(steps, probs, best=bestmed)
 			# systematic uncertainty
 			syslo, sysup = systematicUncertainty('steps_radwave%01i_???pc_*mass*' % radnum if radwave else 'steps_ringwave_???pc_*mass*', bestmed)
 			for i in range(len(bestmed)):
-				scientificNotationTitle(bestmed[i], stalo[i], staup[i], syslo[i], sysup[i])
+				scientificNotation(bestmed[i], stalo[i], staup[i], syslo[i], sysup[i])
 
 		#print('systematic error from H & mass is:\n', *betterOutput(sysup),\
 		#	'\n', *betterOutput(syslo))
-		#scientificNotationTitle(values[i], min(lim)-values[i], max(lim)-values[i], syslo[i], sysup[i]))
+		#scientificNotation(values[i], min(lim)-values[i], max(lim)-values[i], syslo[i], sysup[i]))
 
 
 
 	### AIC / BIC
-	if 0:
+	if 1:
+		bestmed = bestValue(steps, probs, method='bestmed')
 		# Number of data points and free parameters
 		n = len(data[0])  # number of data points
-		k = len(best)     # number of free parameters
+		k = len(bestmed)     # number of free parameters
 
 		# Log-likelihood for the best-fitting parameters
-		log_likelihood = lnlike_normalized(best, data)
+		log_likelihood = lnlike(bestmed, data)
 
 		# Calculate AIC and BIC
 		aic = 2 * k - 2 * log_likelihood
 		bic = k * np.log(n) - 2 * log_likelihood
 
-
+		print('\n%i data and %i free parameters' % (n, k))
 		print('AIC for the best-fitting model:', aic)
 		print('BIC for the best-fitting model:', bic)
 		#aicbic(data, bestmed)
@@ -927,8 +1032,12 @@ if __name__ == '__main__':
 		from shared import textwidth, subfigureIndexFont
 		figscale = 0.6 if not sin else 0.45
 		figwidth = textwidth*figscale
+		plt.rcParams['font.sans-serif'] = ['Arial']
+		plt.rcParams['font.family'] = 'sans-serif'
+		plt.rcParams['axes.titlesize'] = 20
 		plt.rcParams['savefig.dpi'] = 280
 		plt.rcParams['axes.linewidth'] = 0.8
+		plt.rcParams['axes.labelpad'] = -3
 		plt.rcParams['axes.labelsize'] = 20
 		plt.rcParams['axes.labelweight'] = 'bold'
 		plt.rcParams['xtick.labelsize'] = 18
@@ -941,6 +1050,8 @@ if __name__ == '__main__':
 		plt.rcParams['ytick.minor.visible'] = True
 		plt.rcParams['legend.fontsize'] = 15
 
+		from corners import corners
+		'''
 		def corners(steps, probs, bins=10, showtop=0.9, order=None,
 			figure_kws = dict(figsize=(figwidth, figwidth)),
 			hist_kws = dict(density=True, color = 'grey', histtype='step'),
@@ -1010,7 +1121,19 @@ if __name__ == '__main__':
 
 				### labels
 				if labels is not None:
-					text = '%s=%s' % (labels[i], scientificNotationTitle(values[i], min(lim)-values[i], max(lim)-values[i]))
+					if warp:
+						if component==1: vd = [3,3,2,2]
+						elif component==2: vd = [3,3,2,4,3,3,2]
+					else:
+						if radwave:
+							if radnum==0: vd = [3,3,2,4,3,3,2]
+							elif radnum==1: vd = [2,3,4,3]
+							elif radnum==2: vd = [2,3,4,3]
+							elif radnum==3: vd = [2,3,4,4]
+							elif radnum==4: vd = [2,3,4,4]
+						else:
+							vd = [3,3,3,4,2]
+					text = '%s=%s' % (labels[i], scientificNotation(values[i], min(lim)-values[i], max(lim)-values[i], digit=vd[i]))
 					ax[i,i].text(0, 1.02, text, transform=ax[i,i].transAxes, ha='left', va='bottom', **hist_label_kws)
 
 				### output
@@ -1066,25 +1189,7 @@ if __name__ == '__main__':
 					### hide upper right
 					ax[j,i].axes.set_axis_off()
 			f.close()
-			
-			if warp:
-				if component==1:
-					ax[0,0].text(-0.22, 1, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
-				else:
-					ax[0,0].text(-0.35, 1, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
-			else:
-				if component==1:
-					if radwave:
-						ax[0,0].text(-0.5, 1.2, 'a', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
-					else:
-						ax[0,0].text(-0.32, 1.05, 'b', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
-				else:
-					if radwave:
-						ax[0,0].text(-0.5, 1.2, 'c', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
-					else:
-						ax[0,0].text(-0.32, 1.05, 'd', ha='left', va='top', color='black', font=subfigureIndexFont, transform=ax[0,0].transAxes)
-			
-			return fig, ax
+		'''			
 
 		if sin:
 			if radwave:
@@ -1099,10 +1204,39 @@ if __name__ == '__main__':
 			plt.savefig('fig/corner_%icomp%s_mock.%s' % (component, suffix, plt.rcParams['savefig.format']), bbox_inches='tight')
 			plt.savefig('fig/corner_%icomp%s_mock.png' % (component, suffix), bbox_inches='tight')
 		else:
-			fig, ax = corners(steps, probs, bins=31, labels=free_params_name, values=bestmed, showtop=0.3, order=order)
-			
+			kws = dict(bins=31, labels=free_params_name, values=bestmed, ranges=0.1, hist2d_kws = dict(cmap='Greys'), contour=0)
+			figidx_kws = dict(ha='left', va='top', color='black', font=subfigureIndexFont)
+
+			if warp:
+				if component==1:
+					fig, ax = corners(steps, probs, order=None, digits=(3,3,2,2), **kws)
+					#ax[0,0].text(-0.22, 1, 'a', transform=ax[0,0].transAxes, **figidx_kws)
+				else:
+					kws['ranges'] = [0.1, 0.1, 0.1, (-0.035, -0.006), 0.1, 0.1, 0.1]
+					fig, ax = corners(steps, probs, order=None, digits=(3,3,2,2,4,3,3), **kws)
+					#ax[0,0].text(-0.35, 1, 'b', transform=ax[0,0].transAxes, **figidx_kws)
+			elif radwave:
+				if radnum == 0:
+					if component==1:
+						kws['ranges'] = [0.1, 0.1, 0.1, 0.1, 0.1, (30.75, 32.9), 0.1]
+						fig, ax = corners(steps, probs, order=(0,3,4,1,2,5,6), digits=(3,4,3,3,2,3,2), **kws)
+						#ax[0,0].text(-0.5, 1.2, 'a', transform=ax[0,0].transAxes, **figidx_kws)
+					else:
+						kws['ranges'] = [0.1, (11.28, 11.435), 0.1, 0.1, 0.1, (30.8, 32.9), 0.1]
+						fig, ax = corners(steps, probs, order=(0,3,4,1,2,5,6), digits=(3,4,3,3,2,3,2), **kws)
+						#ax[0,0].text(-0.5, 1.2, 'c', transform=ax[0,0].transAxes, **figidx_kws)
+				else:
+					fig, ax = corners(steps, probs, order=(0,2,1,3), **kws)
+			else:
+				fig, ax = corners(steps, probs, order=(0,2,1,3,4), digits=(3,3,3,4,2), **kws)
+				#if component==1:
+				#	ax[0,0].text(-0.32, 1.05, 'b', transform=ax[0,0].transAxes, **figidx_kws)
+				#else:
+				#	ax[0,0].text(-0.32, 1.05, 'd', transform=ax[0,0].transAxes, **figidx_kws)
+
 			#avoid ticklabel overlap
 			
+			'''
 			if (component==1) and sin and radwave and (radnum==0):
 				for i in range(6): ax[6, i].set_ylim(8.8, 10.2)
 				ax[6, 6].set_xlim(8.8, 10.2)
@@ -1116,11 +1250,18 @@ if __name__ == '__main__':
 				#for i in range(3): ax[i, 3].set_xlim(30.8,32.9)
 				#for i in range(2): ax[2, i].set_ylim(0.07794477178721429, 0.08199999)
 				pass
-			
+			'''
 			plt.savefig('fig/corner_%icomp%s.%s' % (component, suffix, plt.rcParams['savefig.format']), bbox_inches='tight')
 			plt.savefig('fig/corner_%icomp%s.png' % (component, suffix), bbox_inches='tight')
 			#corner.corner(steps, show_titles=True, plot_contours=False, plot_datapoints=True, quantiles=[0.16, 0.5, 0.84], range=None)#[(v-0.5,v+0.5) for v in best])
 		
+	for f in glob.glob('fig/corner_?comp_errD_150pc_sqrtmass.*'):
+		os.rename(f, f[:-24]+f[-4:])
+	for f in glob.glob('fig/corner_?comp_radwave0_150pc_sqrtmass.*'):
+		os.rename(f, f[:-19]+f[-4:])
+	for f in glob.glob('fig/corner_?comp_ringwave_150pc_sqrtmass.*'):
+		os.rename(f, f[:-19]+f[-4:])
+
 
 	### export residual, only normal warp
 	if warp:
@@ -1286,6 +1427,8 @@ if __name__ == '__main__':
 			#cbar.ax.set_ylabel('Z') # 可选：为colorbar添加标签
 		
 
+		plt.rcParams['font.sans-serif'] = ['Arial']
+		plt.rcParams['font.family'] = 'sans-serif'
 		plt.rcParams['savefig.dpi'] = 280
 		plt.rcParams['axes.linewidth'] = 0.8
 		plt.rcParams['axes.labelsize'] = 20
@@ -1299,7 +1442,7 @@ if __name__ == '__main__':
 		plt.rcParams['xtick.minor.visible'] = True
 		plt.rcParams['ytick.minor.visible'] = True
 		plt.rcParams['legend.fontsize'] = 15
-		if 0:
+		if 1:
 			#dZ_plane, SET warp=False
 
 			figscale = 0.53
@@ -1356,6 +1499,7 @@ if __name__ == '__main__':
 			fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'png'), bbox_inches='tight')
 			fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'pdf'), bbox_inches='tight')
 		elif 0:
+			# residual with arm curves
 			figscale = 0.39 if component==1 else 0.63
 			figwidth = textwidth*figscale
 			fontscale = 1.3
@@ -1453,7 +1597,7 @@ if __name__ == '__main__':
 			fig.savefig('fig/dZ_plane_%1icomp_greatwave.%s' % (component, 'pdf'), bbox_inches='tight')
 			#fig.savefig('fig/dZ_plane_%1icomp.%s' % (component, 'pdf'), bbox_inches='tight')
 		elif 1:
-			# compare
+			# compare in 3 panels
 			figscale = 0.53
 			figwidth = textwidth*figscale
 			fontscale = 1.3
@@ -1533,7 +1677,7 @@ if __name__ == '__main__':
 			fig.savefig('fig/compare_dZ_plane_%1icomp2v.%s' % (component, 'png'), bbox_inches='tight')
 			#ax.text(-0.1, 1, 'a', font=subfigureIndexFont, transform = ax.transAxes, ha='right', va='top')			
 		else:
-			# compare
+			# compare in 4 panels, obsolete
 			figscale = 0.53
 			figwidth = textwidth*figscale
 			fontscale = 1.3
@@ -1648,7 +1792,7 @@ if __name__ == '__main__':
 		import plotly.graph_objs as go
 		from shared import rad_sep, to_subscript
 		figscale = 0.5
-		fontscale = 1.3
+		fontscale = 1.4
 
 		### Data
 		#points = go.Scatter3d(x=X, y=Y, z=Z - function((R,PHI), bestmed, sin=False), mode='markers', \
@@ -1760,6 +1904,11 @@ if __name__ == '__main__':
 			showspikes = False, showbackground=False, backgroundcolor='white')
 
 		layout = go.Layout(
+			font=dict(
+				family="Arial",
+				size=12,  # Optional: set a default size
+				color="black"  # Optional: set a default color
+				),
 			scene=dict(
 				xaxis=dict(title = '',#dict(text='X (kpc)', font=title_font),
 					range = [-24.01, 24.01],
@@ -2364,7 +2513,7 @@ if __name__ == '__main__':
 
 
 	### interactive online figure
-	if 1 and warp:
+	if 0 and warp:
 		from shared import *
 		import plotly.graph_objs as go
 		figscale = 1
@@ -2483,6 +2632,11 @@ if __name__ == '__main__':
 			showspikes = False, showbackground=False, backgroundcolor='white')
 
 		layout = go.Layout(
+			font=dict(
+				family="Arial",
+				size=12,  # Optional: set a default size
+				color="black"  # Optional: set a default color
+				),
 			scene=dict(
 				xaxis=dict(title = dict(text='X (kpc)', font=title_font),
 					range = [-24.01, 24.01],
@@ -2495,7 +2649,7 @@ if __name__ == '__main__':
 					#ticktext = ["%+i" % y for y in range(-24, 25, 8)],
 					**tick_kws),
 				zaxis=dict(title = dict(text='Z (kpc)', font=title_font),
-					range = [-2.1, 2 if component==1 else 2.21],
+					range = [-2.1, 2 if component==1 else 2.41],
 					tickvals = np.arange(-1, 3, 1),
 					#ticktext = ["%+i" % z for z in range(-1, 3, 1)],
 					zerolinecolor='#000000', zerolinewidth=5, **tick_kws),
@@ -2692,6 +2846,7 @@ if __name__ == '__main__':
 		### Show the plot
 		if 0: fig.show()
 		else:
+			print('Export to fig/dZ_%icomp.png/html' % component)
 			fig.write_image("fig/dZ_%icomp.png" % (component))#, scale=3)
 			fig.write_html("fig/dZ_%icomp.html" % (component))#, scale=3)
 

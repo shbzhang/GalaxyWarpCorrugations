@@ -54,7 +54,8 @@ def arm_wave(R, Phi, arm='out', width=0.7, rScale=1, spline=0.01):
 	rr_on_arm = function_arm(az, p)
 	zz_res = zz - function_warp( (rr_on_arm, az), p=pWarp)
 	### bin
-	azcen, azrms, zcen_res, zrms_res = cal_zcen_zrms(az, zz_res, weights=mass, binsize=4)
+	#azcen, azrms, zcen_res, zrms_res = cal_zcen_zrms(az, zz_res, weights=mass, binsize=4)
+	azcen, azrms, zcen_res, zrms_res = bin_data(az, zz_res, mass, grid=np.arange(160, -50, -2), width=5, method='gauss')
 	idx = np.isfinite(zcen_res)
 	### add zero edge
 	x = [np.max(azcen[idx])+8, np.max(azcen[idx])+4, *azcen[idx], np.min(azcen[idx])-4, np.min(azcen[idx])-8][::-1]
@@ -206,20 +207,22 @@ plotter.add_mesh(sinCut, scalars='RGBA', rgba=True, specular=1.0, specular_power
 #plotter.add_mesh(gc2sun, line_width=20, color='red')
 
 ### Sun
-sun_core = pv.Sphere(radius=0.2, center=(0, 8.15, 0), theta_resolution=30, phi_resolution=30)
+sun_core = pv.Sphere(radius=0.3, center=(0, 8.15, 0), theta_resolution=30, phi_resolution=30)
 plotter.add_mesh(sun_core, color=(255, 255, 0))
 #sun_glow = pv.Sphere(radius=0.3, center=(0, 8.15, 0), theta_resolution=30, phi_resolution=30)
 #plotter.add_mesh(sun_glow, color=(255, 255, 255), opacity=0.3, smooth_shading=True)
 
 ### annotation
-plotter.add_lines(np.array([[8,-4.2,0.3], [8,-4.2,8]]), color='w', width=3)
-plotter.add_lines(np.array([[14,0,5.9], [14,0,8]]), color='w', width=3)
-plotter.add_lines(np.array([[8.5,12,3], [8.5,12,8]]), color='w', width=3)
 if not html:
-	plotter.add_point_labels([[8,-4.2,8]], ['Slice along\nOuter Arm'], font_size=40, text_color='w', shape=False)
-	plotter.add_point_labels([[14,0,8]], ['Warp'], font_size=40, text_color='w', shape=False)
-	plotter.add_point_labels([[8.5,12,8]], ['Slice along\nBar-direction'], font_size=40, text_color='w', shape=False)
+	# add text in latex
+	pass
+	#plotter.add_point_labels([[8,-4.2,8]], ['Slice along\nOuter Arm'], font_size=60, text_color='w', shape=False, font_family='arial')
+	#plotter.add_point_labels([[14,0,8]], ['Warp'], font_size=60, text_color='w', shape=False, font_family='arial')
+	#plotter.add_point_labels([[8.5,12,8]], ['Slice along\nBar-direction'], font_size=60, text_color='w', shape=False, font_family='arial')
 else:
+	plotter.add_lines(np.array([[8,-4.2,0.3], [8,-4.2,8]]), color='w', width=3)
+	plotter.add_lines(np.array([[14,0,5.9], [14,0,8]]), color='w', width=3)
+	plotter.add_lines(np.array([[8.5,12,3], [8.5,12,8]]), color='w', width=3)
 	text1 = pv.Text3D('Slice along\nOuter Arm', depth=0.0)
 	text1.scale(0.45, inplace=True)             # Font size
 	text1.rotate_z(-90, inplace=True)           # Rotate around Z
@@ -263,11 +266,11 @@ plotter.show_bounds(bounds=[-30, 30, -30, 30, -5, 5], grid=True, bold=True, \
 	zlabel='Z - model (kpc)')
 '''
 if html:
+	plotter.export_html("fig/schematic.html")
 	plotter.show()
-	#plotter.export_html("fig/schematic.html")
-	plotter.screenshot('fig/schematic.png')
+	plotter.screenshot('fig/schematic_interact.png')
 else:
 	plotter.show()
-	plotter.save_graphic('fig/schematic.eps')
-	#plotter.screenshot('fig/schematic.png')
+	#plotter.save_graphic('fig/schematic.eps')
+	plotter.screenshot('fig/schematic.png')
 

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 suffix = ''#'_xf'
-ceph = 0
+ceph = 1
 ob = 0
 
 if __name__ == '__main__':
@@ -87,9 +87,9 @@ if __name__ == '__main__':
 			ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., label='MWISP clouds', **rad_kws_err)
 
 			subC = cepheid[(cepheid['az'] >= theta2) & (cepheid['az'] < theta1)]
-			ax[i].scatter(subC['r'], subC['z'], s=15, facecolor='orangered', edgecolor='none', alpha=0.8, zorder=200)
+			ax[i].scatter(subC['r'], subC['z'], s=15, facecolor='#aa44cc', edgecolor='none', alpha=0.6, zorder=200)
 			rcen, rrms, zcen, zrms = bin_data(subC['r'], subC['z'], np.ones(len(subC)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=5)
-			ax[i].plot(rcen, zcen, '.-', color='darkred', zorder=200, label='Cepheids')
+			ax[i].plot(rcen, zcen, '.-', color='#770099', zorder=200, label='Cepheids')
 			'''
 			subY = ygiant[(ygiant['az'] >= theta2) & (ygiant['az'] < theta1) & (np.abs(ygiant['z'])<1)]
 			ax[i].scatter(subY['r'], subY['z'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 			'''
 			if i == 4:
 				handles, labels = ax[i].get_legend_handles_labels()
-				ax[i].legend(handles[::-1], labels[::-1], loc='lower right', frameon=False, borderpad=0.2, labelspacing=0.1)
+				ax[i].legend(handles[::-1], labels[::-1], loc=(0.24, 0.01), frameon=False, borderpad=0.2, labelspacing=0.1)
 		elif ob:
 			starIdx = (starAz >= theta2) & (starAz < theta1)
 			ax[i].scatter(starR[starIdx], starZ[starIdx], s=1, c='red', alpha=0.4, zorder=200)
@@ -121,12 +121,12 @@ if __name__ == '__main__':
 		ax[i].plot(gr_axis, zw1, **rad_kws_co1)
 		ax[i].plot(gr_axis, zw2, **rad_kws_co2)
 
-		if (not ceph) & (not ob):
+		if 1 & (not ceph) & (not ob):
 			x = np.broadcast_arrays(gr_axis, theta)
 			zmodels = []
 			for s in steps[:]:
 				zmodels.append(np.array([gr_axis, function_warp(x, p=[0, *s])]).T)
-			lc = LineCollection(zmodels, color='peachpuff', alpha=0.2, lw=1)
+			lc = LineCollection(zmodels, color='peachpuff', alpha=0.2, lw=1, zorder=0)
 			lc.set_rasterized(True)
 			ax[i].add_collection(lc)
 			#cinterval = np.percentile(zmodels, [16, 84], axis=0)
@@ -146,24 +146,27 @@ if __name__ == '__main__':
 
 
 		if i == 10:
+			pass
 			### arm labels
 			#ax[i].plot([9.6, 12.6, 17.1], [-0.4, 0.0, 0.2], linestyle='None', color='grey', marker=r'$\uparrow$', ms=8, zorder=30)
 			#for x,y,t in zip([9.6, 12.6, 17.1], [-0.4, 0.0, 0.2], ['     Perseus', '   Outer', 'OSC']):
 			#	ax[i].text(x,y-0.1,t, ha='center', va='top', fontsize=rad_kws_text['fontsize'])
-			ax[i].set_xlabel('R (kpc)')
-			ax[i].set_ylabel('Z (kpc)')
 		if i>=10:
 			xtk = ax[i].get_xticks().astype(str)
 			xtk[2] = '  '+xtk[2]	#shift '8' a little right
 			ax[i].set_xticklabels(xtk) # add kpc at the end
 
-		if (not ceph) and (i == 4): ax[i].legend(loc='lower right', frameon=False, borderpad=0.2, labelspacing=0.1)
+		if (not ceph) and (i == 4): ax[i].legend(loc=(0.37,0.01), frameon=False, borderpad=0.2, labelspacing=0.1, handletextpad=0.2, fontsize=14)
 		ax[i].set_xlim([8 if ceph or ob else 8, 18.5])#21.5])
 		ax[i].set_ylim([-0.8, 1.4])
 
 	#if not ceph:
 	#	ax[0].text(-0.32, 0.9, 'c', color='black', font=subfigureIndexFont, transform=ax[0].transAxes)
 
+	ax11 = fig.add_subplot(111, frameon=False)
+	ax11.tick_params(which='both', labelcolor='none', top=False, bottom=False, left=False, right=False)
+	ax11.set_xlabel('R (kpc)')
+	ax11.set_ylabel('Z (kpc)')
 
 	if ceph: bn = 'fig/r_z_MC_Ceph%s' % suffix
 	elif ob: bn = 'fig/r_z_MC_OB%s' % suffix

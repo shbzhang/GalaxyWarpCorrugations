@@ -10,6 +10,9 @@ from Distance import Distance, A5
 # import time
 # from scipy.stats import binned_statistic
 
+plt.rcParams['font.sans-serif'] = ['Arial']
+plt.rcParams['font.family'] = 'sans-serif'
+
 def weighted_binned_statistic(x, z, w, bins):
 	# bin and get aver/std
 	#w = np.ones_like(w) # try equal weight
@@ -226,17 +229,17 @@ def _plot_slice(ax, X_obs, Z_obs, X_true, Z_true, mass, mask_obs, mask_true, bin
 	valid = ~np.isnan(mean_Z) & ~np.isnan(std_Z)
 	ax.fill_between(bin_c[valid], (mean_Z[valid]-std_Z[valid])*1000.0, (mean_Z[valid]+std_Z[valid])*1000.0,
 					color='red', alpha=0.14, label=r'1$\sigma$ mass-weighted dispersion')
-	ax.plot(bin_c, mean_Z*1000.0, color='red', lw=3.0, marker='o', markersize=7.5, markeredgecolor='white', label='Recovered mean')
+	ax.plot(bin_c, mean_Z*1000.0, color='red', lw=3.0, marker='o', markersize=10., markeredgecolor='white', label='Recovered mean')
 	bin_c_true, mean_Z_true, _ = weighted_binned_statistic(X_true[mask_true], Z_true[mask_true], mass[mask_true], bins)
 	ax.plot(bin_c_true, mean_Z_true*1000.0, color='blue', lw=2.5, ls='--', label='Injected true signal')
 	ax.axhline(0.0, color='black', lw=1.4, ls='--')
-	ax.text(-0.10, 1.01, panel_label, transform=ax.transAxes, fontsize=20, fontweight='bold', va='bottom', ha='right')
+	ax.text(-0.08, 0.98, panel_label, transform=ax.transAxes, fontsize=20, fontweight='bold', va='top', ha='right')
 	ax.text(0.50, 0.95, title_text, transform=ax.transAxes, fontsize=13.0, ha='center', va='top',
 			bbox=dict(boxstyle='round,pad=0.35', facecolor='white', alpha=0.86, edgecolor='gray'))
 	ax.set_xlim(bins[0], bins[-1])
 	ax.set_ylim(-700, 700)
 	ax.tick_params(top=True, right=True, labelsize=12.5, direction='in', length=5)
-	ax.set_xlabel('Galactocentric Radius $R$ (kpc)', fontsize=14)
+	ax.set_xlabel('Galactocentric Radius $\mathbf{R}$ (kpc)', fontsize=14, fontweight='bold')
 
 
 def draw_figures(\
@@ -272,13 +275,13 @@ def draw_figures(\
 		_plot_slice(ax, obs['R_obs'], obs['Z_obs'], dat['R_true'], z_true, dat['masses'], mask_obs, mask_true,
 					radial_bins, panel_label, title_text + f'\nSector: $\\phi \\in [{phi_min:.0f}^\\circ, {phi_max:.0f}^\\circ]$')
 		if ax in [axs[0,0], axs[1,0]]:
-			ax.set_ylabel('$\mathbf{\Delta}$Z (pc)', fontsize=14)
+			ax.set_ylabel('$\mathbf{\Delta}$Z (pc)', fontsize=14, fontweight='bold')
 		if panel_label == 'a':
 			ax.legend(fontsize=10.2, loc='lower left', framealpha=0.88, edgecolor='black')
 
 	plt.subplots_adjust(left=0.08, right=0.97, top=0.95, bottom=0.08, hspace=0.22, wspace=0.16)
-	plt.savefig(f'{save_prefix}.pdf', dpi=300, bbox_inches='tight')
-	plt.savefig(f'{save_prefix}.png', dpi=300, bbox_inches='tight')
+	plt.savefig(f'fig/{save_prefix}.pdf', dpi=300, bbox_inches='tight')
+	#plt.savefig(f'fig/{save_prefix}.png', dpi=300, bbox_inches='tight')
 	plt.close(fig)
 
 	plot_direct_streaming_faceon(base['x_true'], base['y_true'], base['V_systematic'],
