@@ -34,7 +34,7 @@ Click the image to open the interactive version.
 
 ### 📌 Supplementary Figure 1: m = 1 CO warp model.
 The interactive counterpart to Figure 1a.
-Created by `src/mcmcFittingFunctionErr.py` with `component=1` and `warp=True`.
+- Created by `src/mcmcFittingFunctionErr.py` with `component=1` and `warp=True`.
 
 [![Supplementary Figure 1](Supp_Fig1.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/Supp_Fig1.html)
 
@@ -42,7 +42,7 @@ Created by `src/mcmcFittingFunctionErr.py` with `component=1` and `warp=True`.
 
 ### 📌 Supplementary Figure 2: m = 1, 2 CO warp model.
 The interactive counterpart to Extended Data Figure 1.
-Created by `src/mcmcFittingFunctionErr.py` with `component=2` and `warp=True`.
+- Created by `src/mcmcFittingFunctionErr.py` with `component=2` and `warp=True`.
 
 [![Supplementary Figure 2](Supp_Fig2.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/Supp_Fig2.html)
 
@@ -50,7 +50,7 @@ Created by `src/mcmcFittingFunctionErr.py` with `component=2` and `warp=True`.
 
 ### 📌 Supplementary Figure 3: A schematic three-dimensional view of the Milky Way.
 The interactive counterpart to Figure 4.
-Created by `src/schematic.py`.
+- Created by `src/schematic.py`.
 
 [![Supplementary Figure 3](Supp_Fig3.png)](https://shbzhang.github.io/GalaxyWarpCorrugations/Supp_Fig3.html)
 
