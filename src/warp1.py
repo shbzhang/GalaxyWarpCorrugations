@@ -98,12 +98,12 @@ if __name__ == '__main__':
 
 		### Cepheids, check why they have higher Z than clouds
 		if ceph:
-			ax[i].plot(azcen, zcen, '-', label='MWISP clouds', **ring_kws_bin)
+			ax[i].plot(azcen, zcen, '.-', label='CO mean', markersize=10, **ring_kws_bin)
 
 			subC = cepheid[(cepheid['r'] >= gr1) & (cepheid['r'] < gr2)]
 			ax[i].scatter(subC['az'], subC['z'], s=15, facecolor='#aa44cc', edgecolor='none', alpha=0.6, zorder=200)
 			azcen, azrms, zcen, zrms = bin_data(subC['az'], subC['z'], np.ones(len(subC)), grid=np.arange(160, -50, -6), width=12, method='gauss', minbin=5)
-			ax[i].plot(azcen, zcen, '.-', color='#770099', zorder=200, label='Cepheids')
+			ax[i].plot(azcen, zcen, '.-', color='#770099', zorder=200, markersize=10, label='Cepheid mean')
 			
 			'''
 			subY = ygiant[(ygiant['r'] >= gr1) & (ygiant['r'] < gr2) & (np.abs(ygiant['z'])<1)]
@@ -111,7 +111,7 @@ if __name__ == '__main__':
 			azcen, azrms, zcen, zrms = bin_data(subY['az'], subY['z'], np.ones(len(subY)), grid=np.arange(160, -50, -3), width=6, method='gauss', minbin=50)
 			ax[i].plot(azcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
 			'''
-			if i==len(ax)-1: ax[i].legend(frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=18)
+			if i==len(ax)-1: ax[i].legend(frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=20)
 		elif ob:
 			starIdx = (starR >= gr1) & (starR < gr2)
 			ax[i].scatter(starAz[starIdx], starZ[starIdx], s=1, c='orangered', zorder=200, alpha=0.3)#, **rad_kws_mc)
@@ -187,7 +187,11 @@ if __name__ == '__main__':
 		upper.tick_params(axis='x', which='major', pad=-18, length=5)
 
 		### legend in the last panel
-		if (not ceph) and (i==len(ax)-1): ax[i].legend(loc=[0.35, 0.01], handletextpad=0.2, frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=14)
+		if i==len(ax)-1:
+			#if ceph:
+			#	ax[i].legend(loc=[0.48, 0.04], handletextpad=0.2, frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=18)
+			if not ceph:
+				ax[i].legend(loc=[0.35, 0.01], handletextpad=0.2, frameon=False, borderpad=0.2, labelspacing=0.1, fontsize=14)
 
 	### panel ID
 	#if not ceph:

@@ -232,7 +232,7 @@ def _plot_slice(ax, X_obs, Z_obs, X_true, Z_true, mass, mask_obs, mask_true, bin
 	ax.plot(bin_c, mean_Z*1000.0, color='red', lw=3.0, marker='o', markersize=10., markeredgecolor='white', label='Recovered mean')
 	bin_c_true, mean_Z_true, _ = weighted_binned_statistic(X_true[mask_true], Z_true[mask_true], mass[mask_true], bins)
 	ax.plot(bin_c_true, mean_Z_true*1000.0, color='blue', lw=2.5, ls='--', label='Injected true signal')
-	ax.axhline(0.0, color='black', lw=1.4, ls='--')
+	ax.axhline(0.0, color='grey', lw=0.5, ls='-')
 	ax.text(-0.08, 0.98, panel_label, transform=ax.transAxes, fontsize=20, fontweight='bold', va='top', ha='right')
 	ax.text(0.50, 0.95, title_text, transform=ax.transAxes, fontsize=13.0, ha='center', va='top',
 			bbox=dict(boxstyle='round,pad=0.35', facecolor='white', alpha=0.86, edgecolor='gray'))

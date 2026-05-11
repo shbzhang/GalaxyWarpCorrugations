@@ -10,6 +10,7 @@ from shared import *
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+import matplotlib.patches as mpatches
 
 suffix = ''#'_xf'
 ceph = 1
@@ -81,24 +82,24 @@ if __name__ == '__main__':
 		### plot binned average and errorbar
 		rcen, rrms, zcen, zrms = bin_data(rr[idx], zz[idx], mass[idx], grid=np.arange(8.15 if i<5 else 8, 30, 1), width=1, method='gauss', minbin=5)
 		#rcen, rrms, zcen, zrms = cal_zcen_zrms(rr[idx], zz[idx], weights=mass[idx], binsize=-1, bin0=8.15 if i<5 else 8)
-		ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., **rad_kws_err)
+		comean = ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., **rad_kws_err)
 
 		if ceph:
-			ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., label='MWISP clouds', **rad_kws_err)
+			#ax[i].errorbar(rcen, zcen, yerr=zrms*2.355/2., label='CO mean', **rad_kws_err)
 
 			subC = cepheid[(cepheid['az'] >= theta2) & (cepheid['az'] < theta1)]
 			ax[i].scatter(subC['r'], subC['z'], s=15, facecolor='#aa44cc', edgecolor='none', alpha=0.6, zorder=200)
 			rcen, rrms, zcen, zrms = bin_data(subC['r'], subC['z'], np.ones(len(subC)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=5)
-			ax[i].plot(rcen, zcen, '.-', color='#770099', zorder=200, label='Cepheids')
+			cephmean = ax[i].plot(rcen, zcen, '.-', color='#770099', zorder=10, markersize=9, label='Cepheid mean')
 			'''
 			subY = ygiant[(ygiant['az'] >= theta2) & (ygiant['az'] < theta1) & (np.abs(ygiant['z'])<1)]
 			ax[i].scatter(subY['r'], subY['z'], s=10, facecolor='none', edgecolor='k', alpha=0.2, zorder=0)
 			rcen, rrms, zcen, zrms = bin_data(subY['r'], subY['z'], np.ones(len(subY)), grid=np.arange(5, 30, 1), width=1, method='gauss', minbin=50)
 			ax[i].plot(rcen, zcen, '--', color='k', zorder=201, linewidth=2.5, label='Young giants')
 			'''
-			if i == 4:
-				handles, labels = ax[i].get_legend_handles_labels()
-				ax[i].legend(handles[::-1], labels[::-1], loc=(0.24, 0.01), frameon=False, borderpad=0.2, labelspacing=0.1)
+			#if i == 4:
+			#	handles, labels = ax[i].get_legend_handles_labels()
+			#	ax[i].legend(handles[::-1], labels[::-1], loc=(0.24, 0.01), frameon=False, borderpad=0.2, labelspacing=0.1)
 		elif ob:
 			starIdx = (starAz >= theta2) & (starAz < theta1)
 			ax[i].scatter(starR[starIdx], starZ[starIdx], s=1, c='red', alpha=0.4, zorder=200)
@@ -108,18 +109,18 @@ if __name__ == '__main__':
 		### plot warp models
 		# HI
 		zwh = cal_warp_HI(gr_axis, theta)
-		ax[i].plot(gr_axis, zwh, **rad_kws_hi)
+		hiwarp = ax[i].plot(gr_axis, zwh, **rad_kws_hi)
 		# cepheids
 		zwc, _ = cal_warp_Ceph(gr_axis, theta)	#b=1 model
-		ax[i].plot(gr_axis, zwc, **rad_kws_ceph)
+		cephwarp = ax[i].plot(gr_axis, zwc, **rad_kws_ceph)
 		# khanna
 		#zwk = cal_warp_RC(gr_axis, theta)
 		#ax[i].plot(gr_axis, zwk, **rad_kws_rc)
 
 		# CO
 		zw1, zw2=cal_warp_MWSIP(gr_axis, theta)
-		ax[i].plot(gr_axis, zw1, **rad_kws_co1)
-		ax[i].plot(gr_axis, zw2, **rad_kws_co2)
+		cowarp1 = ax[i].plot(gr_axis, zw1, **rad_kws_co1)
+		cowarp2 = ax[i].plot(gr_axis, zw2, **rad_kws_co2)
 
 		if 1 & (not ceph) & (not ob):
 			x = np.broadcast_arrays(gr_axis, theta)
@@ -156,7 +157,14 @@ if __name__ == '__main__':
 			xtk[2] = '  '+xtk[2]	#shift '8' a little right
 			ax[i].set_xticklabels(xtk) # add kpc at the end
 
-		if (not ceph) and (i == 4): ax[i].legend(loc=(0.37,0.01), frameon=False, borderpad=0.2, labelspacing=0.1, handletextpad=0.2, fontsize=14)
+		if i==4:
+			if ceph:
+				#spacer = mpatches.Rectangle((0, 0), 0, 0, fill=False, edgecolor='none', visible=False)
+				#h = [spacer, spacer, comean, cephmean[0], hiwarp[0], cephwarp[0], cowarp1[0], cowarp2[0]]
+				#l = ['', '', 'CO mean', 'Cepheid mean', labelHI, labelCeph, labelCO1, labelCO2]
+				ax[i].legend([comean, cephmean[0]], ['CO mean', 'Cepheid mean'], loc=(0.32,0.01), frameon=False, borderpad=0.2, labelspacing=0.05, handletextpad=0.2, fontsize=14)#, ncol=2, columnspacing=0.1)
+			else:
+				ax[i].legend(loc=(0.37,0.01), frameon=False, borderpad=0.2, labelspacing=0.1, handletextpad=0.2, fontsize=14)
 		ax[i].set_xlim([8 if ceph or ob else 8, 18.5])#21.5])
 		ax[i].set_ylim([-0.8, 1.4])
 
